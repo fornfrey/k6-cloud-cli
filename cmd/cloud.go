@@ -364,5 +364,23 @@ This will execute the test on the k6 cloud service. Use "k6 login cloud" to auth
 	}
 	cloudCmd.Flags().SortFlags = false
 	cloudCmd.Flags().AddFlagSet(c.flagSet())
+	testSub := &cobra.Command{Use: "test"}
+	testSub.AddCommand(&cobra.Command{Use: "list", Run: func(cmd *cobra.Command, args []string) {
+		cloudConfig, err := cloudapi.GetConsolidatedConfig(nil, c.gs.Env, "", nil)
+		if err != nil {
+			fmt.Println("%s", err)
+			os.Exit(1)
+		}
+		logger := c.gs.Logger
+		client := cloudapi.NewK6CloudClient(logger, cloudConfig.Token.String, "", consts.Version, cloudConfig.Timeout.TimeDuration())
+		err = client.ListCloudTests("")
+		if err != nil {
+			fmt.Println("%s", err)
+			os.Exit(1)
+		}
+		fmt.Println("Listing done")
+	}})
+	cloudCmd.AddCommand(testSub)
+
 	return cloudCmd
 }
