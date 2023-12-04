@@ -1,0 +1,229 @@
+package cloudapi
+
+import (
+	"fmt"
+	"github.com/sirupsen/logrus"
+	"net/http"
+	"strconv"
+	"time"
+)
+
+type Projects struct {
+	ID             int       `json:"id"`
+	Name           string    `json:"name"`
+	Description    string    `json:"description"`
+	OrganizationID int       `json:"organization_id"`
+	Created        time.Time `json:"created"`
+	Updated        time.Time `json:"updated"`
+	IsDefault      bool      `json:"is_default"`
+}
+
+type Organization struct {
+	ID                int       `json:"id"`
+	Name              string    `json:"name"`
+	Logo              any       `json:"logo"`
+	OwnerID           int       `json:"owner_id"`
+	Description       string    `json:"description"`
+	BillingAddress    string    `json:"billing_address"`
+	BillingCountry    string    `json:"billing_country"`
+	BillingEmail      string    `json:"billing_email"`
+	VatNumber         string    `json:"vat_number"`
+	Created           time.Time `json:"created"`
+	Updated           time.Time `json:"updated"`
+	IsDefault         bool      `json:"is_default"`
+	IsSamlOrg         bool      `json:"is_saml_org"`
+	IsGrafanaOrg      bool      `json:"is_grafana_org"`
+	GrafanaBillingID  any       `json:"grafana_billing_id"`
+	GrafanaOrgName    any       `json:"grafana_org_name"`
+	GrafanaOrgSlug    any       `json:"grafana_org_slug"`
+	GrafanaStackName  any       `json:"grafana_stack_name"`
+	GrafanaStackURL   any       `json:"grafana_stack_url"`
+	GrafanaStackID    any       `json:"grafana_stack_id"`
+	SubscriptionIds   []int     `json:"subscription_ids"`
+	LoadZoneIds       []int     `json:"load_zone_ids"`
+	CanTrial          bool      `json:"can_trial"`
+	IsPersonal        bool      `json:"is_personal"`
+	DataRetentionDays int       `json:"data_retention_days"`
+	Vuh               float64   `json:"vuh"`
+	VuhMax            int       `json:"vuh_max"`
+	VuhOvercharge     int       `json:"vuh_overcharge"`
+}
+
+type LoadZone struct {
+	ID           int     `json:"id"`
+	Name         string  `json:"name"`
+	Vendor       string  `json:"vendor"`
+	Country      string  `json:"country"`
+	City         string  `json:"city"`
+	Latitude     float64 `json:"latitude"`
+	Longitude    float64 `json:"longitude"`
+	Configurable bool    `json:"configurable"`
+	K6LoadZoneID string  `json:"k6_load_zone_id"`
+	Public       bool    `json:"public"`
+	Available    bool    `json:"available"`
+}
+
+type Account struct {
+	User struct {
+		ID              int       `json:"id"`
+		Email           string    `json:"email"`
+		FirstName       string    `json:"first_name"`
+		LastName        string    `json:"last_name"`
+		Status          int       `json:"status"`
+		Country         string    `json:"country"`
+		Company         string    `json:"company"`
+		Industry        string    `json:"industry"`
+		DateJoined      time.Time `json:"date_joined"`
+		TimeZone        string    `json:"time_zone"`
+		OrganizationIds []int     `json:"organization_ids"`
+		GravatarURL     string    `json:"gravatar_url"`
+	} `json:"user"`
+	Organizations []Organization `json:"organizations"`
+	LoadZones     []LoadZone     `json:"load_zones"`
+}
+
+type CloudTestRun struct {
+	Created          time.Time `json:"created"`
+	Duration         int       `json:"duration"`
+	ErrorDetail      string    `json:"error_detail"`
+	ID               int       `json:"id"`
+	LoadTime         any       `json:"load_time"`
+	Note             string    `json:"note"`
+	ProcessingStatus int       `json:"processing_status"`
+	ResultStatus     int       `json:"result_status"`
+	RunProcess       string    `json:"run_process"`
+	RunStatus        int       `json:"run_status"`
+	Started          time.Time `json:"started"`
+	TestID           int       `json:"test_id"`
+	Vus              int       `json:"vus"`
+}
+
+type CloudTest struct {
+	Created         time.Time      `json:"created"`
+	CreationProcess string         `json:"creation_process"`
+	ID              int            `json:"id"`
+	Name            string         `json:"name"`
+	ProjectID       int            `json:"project_id"`
+	TestRunIds      []int          `json:"test_run_ids"`
+	CloudTestRun    []CloudTestRun `json:"test_runs"`
+}
+
+func (a *Account) DefaultOrganization() *Organization {
+	for _, org := range a.Organizations {
+		if org.IsDefault {
+			return &org
+		}
+	}
+	return nil
+}
+
+// K6CloudClient handles communication with the k6 Cloud API.
+type K6CloudClient struct {
+	Client
+}
+
+func NewK6CloudClient(logger logrus.FieldLogger, token, host, version string, timeout time.Duration) *K6CloudClient {
+	return &K6CloudClient{
+		Client{
+			client:        &http.Client{Timeout: timeout},
+			token:         token,
+			baseURL:       host,
+			version:       version,
+			retries:       MaxRetries,
+			retryInterval: RetryInterval,
+			logger:        logger,
+		},
+	}
+}
+
+func (c *K6CloudClient) GetAccount() (Account, error) {
+
+	url := fmt.Sprintf("%s/v3/account/me", c.baseURL)
+
+	account := Account{}
+
+	req, err := c.NewRequest("GET", url, nil)
+	if err != nil {
+		return account, err
+	}
+	err = c.Do(req, &account)
+	return account, err
+}
+
+func (c *K6CloudClient) ListCloudProjects(organizationID string) ([]Projects, error) {
+	account, err := c.GetAccount()
+	if organizationID == "" {
+		organizationID = strconv.Itoa(account.DefaultOrganization().ID)
+	}
+
+	url := fmt.Sprintf("%s/v3/organizations/%s/projects", c.baseURL, organizationID)
+
+	projectList := struct {
+		Projects []Projects `json:"projects"`
+	}{}
+
+	req, err := c.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+	err = c.Do(req, &projectList)
+	return projectList.Projects, err
+}
+
+func (c *K6CloudClient) ListCloudLoadZones(organizationID string) ([]LoadZone, error) {
+	account, err := c.GetAccount()
+	if organizationID == "" {
+		organizationID = strconv.Itoa(account.DefaultOrganization().ID)
+	}
+	url := fmt.Sprintf("%s/v3/load-zones?organization_id=%s", c.baseURL, organizationID)
+
+	loadzoneList := struct {
+		LoadZones []LoadZone `json:"load_zones"`
+	}{}
+	req, err := c.NewRequest("GET", url, nil)
+	err = c.Do(req, &loadzoneList)
+	return loadzoneList.LoadZones, err
+}
+
+func (c *K6CloudClient) ListCloudOrganizations() ([]Organization, error) {
+
+	account, err := c.GetAccount()
+	return account.Organizations, err
+}
+
+func (c *K6CloudClient) ListCloudTests(projectID string) ([]CloudTest, error) {
+	if projectID == "" {
+		account, err := c.GetAccount()
+		if err != nil {
+			return nil, err
+		}
+		organizationID := strconv.Itoa(account.DefaultOrganization().ID)
+		projects, err := c.ListCloudProjects(organizationID)
+		if err != nil {
+			return nil, err
+		}
+		for _, p := range projects {
+			if p.IsDefault {
+				projectID = strconv.Itoa(p.ID)
+			}
+		}
+	}
+
+	url := fmt.Sprintf("%s/loadtests/v2/tests?$select=id,name,project_id&project_id=%s", c.baseURL, projectID)
+	testsList := struct {
+		CloudTest []CloudTest `json:"k6-tests"`
+	}{}
+	req, err := c.NewRequest("GET", url, nil)
+	err = c.Do(req, &testsList)
+	return testsList.CloudTest, err
+}
+
+func (c *K6CloudClient) ListCloudTestRuns(testID string) ([]CloudTestRun, error) {
+	url := fmt.Sprintf("%s/loadtests/v2/runs?test_id=%s", c.baseURL, testID)
+	testsRunList := struct {
+		CloudTestRun []CloudTestRun `json:"k6-runs"`
+	}{}
+	req, err := c.NewRequest("GET", url, nil)
+	err = c.Do(req, &testsRunList)
+	return testsRunList.CloudTestRun, err
+}

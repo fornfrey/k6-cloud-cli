@@ -32,6 +32,8 @@ type cmdCloud struct {
 	showCloudLogs bool
 	exitOnRunning bool
 	uploadOnly    bool
+	orgId         string
+	projId        string
 }
 
 func (c *cmdCloud) preRun(cmd *cobra.Command, _ []string) error {
@@ -364,5 +366,59 @@ This will execute the test on the k6 cloud service. Use "k6 login cloud" to auth
 	}
 	cloudCmd.Flags().SortFlags = false
 	cloudCmd.Flags().AddFlagSet(c.flagSet())
+	cloudCmd.PersistentFlags().StringVar(&c.orgId, "org-id", "", "Organization id")
+	cloudCmd.PersistentFlags().StringVar(&c.projId, "proj-id", "", "Project id")
+	cloudConfig, err := cloudapi.GetConsolidatedConfig(nil, c.gs.Env, "", nil)
+	if err != nil {
+		fmt.Println("%s", err)
+		os.Exit(1)
+	}
+	logger := c.gs.Logger
+	client := cloudapi.NewK6CloudClient(logger, cloudConfig.Token.String, cloudConfig.APIHost.String, consts.Version, cloudConfig.Timeout.TimeDuration())
+
+	cloudCmd.AddCommand(getCloudProjectCmd(client, c))
+	cloudCmd.AddCommand(getCloudLoadZoneCmd(client, c))
+	cloudCmd.AddCommand(getCloudOrganizationCmd(client, c))
+	cloudCmd.AddCommand(getCloudTestCmd(client, c))
+	cloudCmd.AddCommand(getCloudTestRunCmd(client, c))
+
 	return cloudCmd
+}
+
+// CloudOutput will eventually allow us to putput JSON and other formats. For now it just helps standarise things.
+type CloudOutput struct {
+	format   string
+	headings []string
+	content  []map[string]any
+}
+
+func NewCloudOutput(format string, headings []string) *CloudOutput {
+	return &CloudOutput{format: format, headings: headings}
+}
+
+func (o *CloudOutput) Add(line map[string]any) {
+	o.content = append(o.content, line)
+}
+
+func (o *CloudOutput) PrintHeading() {
+	h := make([]interface{}, len(o.headings))
+	for i := range o.headings {
+		h[i] = o.headings[i]
+	}
+	fmt.Printf(o.format, h...)
+}
+
+func (o *CloudOutput) PrintLine(line map[string]any) {
+	var l []any
+	for _, heading := range o.headings {
+		l = append(l, line[heading])
+	}
+	fmt.Printf(o.format, l...)
+}
+
+func (o *CloudOutput) Print() {
+	o.PrintHeading()
+	for _, line := range o.content {
+		o.PrintLine(line)
+	}
 }
