@@ -364,23 +364,83 @@ This will execute the test on the k6 cloud service. Use "k6 login cloud" to auth
 	}
 	cloudCmd.Flags().SortFlags = false
 	cloudCmd.Flags().AddFlagSet(c.flagSet())
-	testSub := &cobra.Command{Use: "test"}
-	testSub.AddCommand(&cobra.Command{Use: "list", Run: func(cmd *cobra.Command, args []string) {
-		cloudConfig, err := cloudapi.GetConsolidatedConfig(nil, c.gs.Env, "", nil)
+
+	cloudConfig, err := cloudapi.GetConsolidatedConfig(nil, c.gs.Env, "", nil)
+	if err != nil {
+		fmt.Println("%s", err)
+		os.Exit(1)
+	}
+	logger := c.gs.Logger
+	client := cloudapi.NewK6CloudClient(logger, cloudConfig.Token.String, "", consts.Version, cloudConfig.Timeout.TimeDuration())
+
+	// k6 cloud project
+	projectSub := &cobra.Command{Use: "project"}
+	// k6 cloud project list
+	projectSub.AddCommand(&cobra.Command{Use: "list", Run: func(cmd *cobra.Command, args []string) {
+		projects, err := client.ListCloudProjects("3")
 		if err != nil {
 			fmt.Println("%s", err)
 			os.Exit(1)
 		}
-		logger := c.gs.Logger
-		client := cloudapi.NewK6CloudClient(logger, cloudConfig.Token.String, "", consts.Version, cloudConfig.Timeout.TimeDuration())
-		err = client.ListCloudTests("")
-		if err != nil {
-			fmt.Println("%s", err)
-			os.Exit(1)
+		fs := "%-20s %-20s %-10v\n"
+		fmt.Printf(fs, "NAME", "DESCRIPTION", "DEFAULT?")
+		for _, p := range projects {
+			fmt.Printf(fs, p.Name, p.Description, p.IsDefault)
 		}
-		fmt.Println("Listing done")
 	}})
-	cloudCmd.AddCommand(testSub)
+
+	cloudCmd.AddCommand(projectSub)
+
+	// k6 cloud loadzone
+	loadzoneSub := &cobra.Command{Use: "loadzone"}
+	// k6 cloud loadzone list
+	loadzoneSub.AddCommand(&cobra.Command{Use: "list", Run: func(cmd *cobra.Command, args []string) {
+		loadzones, err := client.ListCloudLoadZones("")
+		if err != nil {
+			fmt.Println("%s", err)
+			os.Exit(1)
+		}
+		fs := "%-30v %-25v %-10v %-10v\n"
+		fmt.Printf(fs, "NAME", "ID", "CITY", "COUNTRY")
+		for _, lz := range loadzones {
+			fmt.Printf(fs, lz.Name, lz.K6LoadZoneID, lz.City, lz.Country)
+		}
+	}})
+	cloudCmd.AddCommand(loadzoneSub)
+
+	// k6 cloud organization
+	organizationSub := &cobra.Command{Use: "organization"}
+	// k6 cloud organization list
+	organizationSub.AddCommand(&cobra.Command{Use: "list", Run: func(cmd *cobra.Command, args []string) {
+		orgs, err := client.ListCloudOrganizations()
+		if err != nil {
+			fmt.Println("%s", err)
+			os.Exit(1)
+		}
+		fs := "%-10v %-25s %-10v\n"
+		fmt.Printf(fs, "ID", "NAME", "DEFAULT?")
+		for _, org := range orgs {
+			fmt.Printf(fs, org.ID, org.Name, org.IsDefault)
+		}
+	}})
+	cloudCmd.AddCommand(organizationSub)
+
+	// k6 cloud test
+	testsSub := &cobra.Command{Use: "test"}
+	// k6 cloud test list
+	testsSub.AddCommand(&cobra.Command{Use: "list", Run: func(cmd *cobra.Command, args []string) {
+		tests, err := client.ListCloudTests("")
+		if err != nil {
+			fmt.Println("%s", err)
+			os.Exit(1)
+		}
+		fs := "%-10v %-25s %-10v \n"
+		fmt.Printf(fs, "ID", "NAME", "PROJECT ID")
+		for _, t := range tests {
+			fmt.Printf(fs, t.ID, t.Name, t.ProjectID)
+		}
+	}})
+	cloudCmd.AddCommand(testsSub)
 
 	return cloudCmd
 }
