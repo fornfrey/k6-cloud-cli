@@ -5,11 +5,11 @@ import (
 	"go.k6.io/k6/cloudapi"
 )
 
-func getCloudOrganizationCmd(client *cloudapi.K6CloudClient, c *cmdCloud) *cobra.Command {
+func getCloudOrganizationCmd(client *cloudapi.K6CloudClient) *cobra.Command {
 	// k6 cloud organization
 	organizationSub := &cobra.Command{Use: "organization"}
 	// k6 cloud organization list
-	organizationSub.AddCommand(&cobra.Command{
+	listOrganizations := &cobra.Command{
 		Use: "list",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			orgs, err := client.ListCloudOrganizations()
@@ -26,6 +26,9 @@ func getCloudOrganizationCmd(client *cloudapi.K6CloudClient, c *cmdCloud) *cobra
 				})
 			}
 			return nil
-		}})
+		}}
+
+	organizationSub.AddCommand(listOrganizations)
+
 	return organizationSub
 }

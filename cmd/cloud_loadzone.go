@@ -5,14 +5,15 @@ import (
 	"go.k6.io/k6/cloudapi"
 )
 
-func getCloudLoadZoneCmd(client *cloudapi.K6CloudClient, c *cmdCloud) *cobra.Command {
+func getCloudLoadZoneCmd(client *cloudapi.K6CloudClient) *cobra.Command {
 	// k6 cloud loadzone
 	loadzoneSub := &cobra.Command{Use: "loadzone"}
 	// k6 cloud loadzone list
-	loadzoneSub.AddCommand(&cobra.Command{
+	var orgId string
+	listLoadZones := &cobra.Command{
 		Use: "list",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			loadzones, err := client.ListCloudLoadZones(c.orgId)
+			loadzones, err := client.ListCloudLoadZones(orgId)
 			if err != nil {
 				return err
 			}
@@ -28,6 +29,10 @@ func getCloudLoadZoneCmd(client *cloudapi.K6CloudClient, c *cmdCloud) *cobra.Com
 				})
 			}
 			return nil
-		}})
+		}}
+	listLoadZones.Flags().StringVar(&orgId, "org-id", "", "Organization id")
+
+	loadzoneSub.AddCommand(listLoadZones)
+
 	return loadzoneSub
 }

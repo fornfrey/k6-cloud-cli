@@ -2,10 +2,12 @@ package cloudapi
 
 import (
 	"fmt"
-	"github.com/sirupsen/logrus"
 	"net/http"
 	"strconv"
 	"time"
+
+	"github.com/sirupsen/logrus"
+	"gopkg.in/guregu/null.v3"
 )
 
 type Projects struct {
@@ -84,9 +86,9 @@ type Account struct {
 
 type CloudTestRun struct {
 	Created          time.Time `json:"created"`
-	Duration         int       `json:"duration"`
+	Duration         int64     `json:"duration"`
 	ErrorDetail      string    `json:"error_detail"`
-	ID               int       `json:"id"`
+	ID               int64     `json:"id"`
 	LoadTime         any       `json:"load_time"`
 	Note             string    `json:"note"`
 	ProcessingStatus int       `json:"processing_status"`
@@ -94,8 +96,12 @@ type CloudTestRun struct {
 	RunProcess       string    `json:"run_process"`
 	RunStatus        int       `json:"run_status"`
 	Started          time.Time `json:"started"`
-	TestID           int       `json:"test_id"`
+	TestID           int64     `json:"test_id"`
 	Vus              int       `json:"vus"`
+
+	RuntimeConfig struct {
+		TestRunDetails null.String `json:"testRunDetails"`
+	} `json:"k6_runtime_config"`
 }
 
 type CloudTest struct {
@@ -226,4 +232,40 @@ func (c *K6CloudClient) ListCloudTestRuns(testID string) ([]CloudTestRun, error)
 	req, err := c.NewRequest("GET", url, nil)
 	err = c.Do(req, &testsRunList)
 	return testsRunList.CloudTestRun, err
+}
+
+func (c *K6CloudClient) StartCloudTest(testID int64) (*CloudTestRun, error) {
+	url := fmt.Sprintf("%s/loadtests/v2/tests/%d/start-testrun", c.baseURL, testID)
+
+	req, err := c.NewRequest("POST", url, nil)
+	if err != nil {
+		return nil, err
+	}
+	response := struct {
+		TestRun CloudTestRun `json:"k6-run"`
+	}{}
+	err = c.Do(req, &response)
+	if err != nil {
+		c.logger.Warn(err, url)
+		return nil, err
+	}
+	return &response.TestRun, nil
+}
+
+func (c *K6CloudClient) GetCloudTestRun(referenceID string) (*CloudTestRun, error) {
+	url := fmt.Sprintf("%s/loadtests/v2/runs/%s?$select=id,duration", c.baseURL, referenceID)
+
+	req, err := c.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+	response := struct {
+		TestRun CloudTestRun `json:"k6-run"`
+	}{}
+
+	err = c.Do(req, &response)
+	if err != nil {
+		return nil, err
+	}
+	return &response.TestRun, nil
 }

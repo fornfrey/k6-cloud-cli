@@ -5,7 +5,7 @@ import (
 	"go.k6.io/k6/cloudapi"
 )
 
-func getCloudTestRunCmd(client *cloudapi.K6CloudClient, c *cmdCloud) *cobra.Command {
+func getCloudTestRunCmd(client *cloudapi.K6CloudClient) *cobra.Command {
 	// k6 cloud testrun
 	testrunsSub := &cobra.Command{Use: "testrun"}
 

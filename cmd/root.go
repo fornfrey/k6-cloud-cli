@@ -7,6 +7,7 @@ import (
 	"io"
 	stdlog "log"
 	"runtime/debug"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -68,6 +69,14 @@ func newRootCommand(gs *state.GlobalState) *rootCommand {
 
 	for _, sc := range subCommands {
 		rootCmd.AddCommand(sc(gs))
+	}
+
+	// hack to keep backwards compatibility with "k6 cloud" command to run a test from script
+	subCmd, _, err := rootCmd.Find(gs.CmdArgs[1:])
+	if err == nil && subCmd != nil && subCmd.Name() == "cloud" {
+		index := slices.Index(gs.CmdArgs, "cloud")
+		args := slices.Insert(gs.CmdArgs, index+1, "test", "run")[1:]
+		rootCmd.SetArgs(args)
 	}
 
 	c.cmd = rootCmd
