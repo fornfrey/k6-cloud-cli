@@ -217,3 +217,14 @@ func (c *K6CloudClient) ListCloudTests(projectID string) ([]CloudTest, error) {
 	err = c.Do(req, &testsList)
 	return testsList.CloudTest, err
 }
+
+func (c *K6CloudClient) ListCloudTestRuns(testID string) ([]CloudTestRun, error) {
+	testID = "1"
+	url := fmt.Sprintf("%s/loadtests/v2/runs?test_id=%s", c.baseURL, testID)
+	testsRunList := struct {
+		CloudTestRun []CloudTestRun `json:"k6-runs"`
+	}{}
+	req, err := c.NewRequest("GET", url, nil)
+	err = c.Do(req, &testsRunList)
+	return testsRunList.CloudTestRun, err
+}

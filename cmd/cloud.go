@@ -442,5 +442,22 @@ This will execute the test on the k6 cloud service. Use "k6 login cloud" to auth
 	}})
 	cloudCmd.AddCommand(testsSub)
 
+	// k6 cloud testrun
+	testrunsSub := &cobra.Command{Use: "testrun"}
+	// k6 cloud testrun list
+	testrunsSub.AddCommand(&cobra.Command{Use: "list", Run: func(cmd *cobra.Command, args []string) {
+		tests, err := client.ListCloudTestRuns("")
+		if err != nil {
+			fmt.Println("%s", err)
+			os.Exit(1)
+		}
+		fs := "%-10v %-10v %-10v %-10v %-30v %-20s \n"
+		fmt.Printf(fs, "ID", "Status", "VUs", "Duration", "Started", "ERROR")
+		for _, t := range tests {
+			fmt.Printf(fs, t.ID, t.RunStatus, t.Vus, t.Duration, t.Started, t.ErrorDetail)
+		}
+	}})
+	cloudCmd.AddCommand(testrunsSub)
+
 	return cloudCmd
 }
