@@ -34,7 +34,6 @@ type cmdCloud struct {
 	uploadOnly    bool
 	orgId         string
 	projId        string
-	testId        string
 }
 
 func (c *cmdCloud) preRun(cmd *cobra.Command, _ []string) error {
