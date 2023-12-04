@@ -376,103 +376,11 @@ This will execute the test on the k6 cloud service. Use "k6 login cloud" to auth
 	logger := c.gs.Logger
 	client := cloudapi.NewK6CloudClient(logger, cloudConfig.Token.String, cloudConfig.APIHost.String, consts.Version, cloudConfig.Timeout.TimeDuration())
 
-	// k6 cloud project
-	projectSub := &cobra.Command{Use: "project"}
-	// k6 cloud project list
-	projectSub.AddCommand(&cobra.Command{
-		Use: "list",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			projects, err := client.ListCloudProjects(c.orgId)
-			if err != nil {
-				return err
-			}
-			fs := "%-20s %-20s %-10v\n"
-			fmt.Printf(fs, "NAME", "DESCRIPTION", "DEFAULT?")
-			for _, p := range projects {
-				fmt.Printf(fs, p.Name, p.Description, p.IsDefault)
-			}
-			return nil
-		}})
-
-	cloudCmd.AddCommand(projectSub)
-
-	// k6 cloud loadzone
-	loadzoneSub := &cobra.Command{Use: "loadzone"}
-	// k6 cloud loadzone list
-	loadzoneSub.AddCommand(&cobra.Command{
-		Use: "list",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			loadzones, err := client.ListCloudLoadZones(c.orgId)
-			if err != nil {
-				return err
-			}
-			fs := "%-30v %-25v %-10v %-10v\n"
-			fmt.Printf(fs, "NAME", "ID", "CITY", "COUNTRY")
-			for _, lz := range loadzones {
-				fmt.Printf(fs, lz.Name, lz.K6LoadZoneID, lz.City, lz.Country)
-			}
-			return nil
-		}})
-	cloudCmd.AddCommand(loadzoneSub)
-
-	// k6 cloud organization
-	organizationSub := &cobra.Command{Use: "organization"}
-	// k6 cloud organization list
-	organizationSub.AddCommand(&cobra.Command{
-		Use: "list",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			orgs, err := client.ListCloudOrganizations()
-			if err != nil {
-				return err
-			}
-			fs := "%-10v %-25s %-10v\n"
-			fmt.Printf(fs, "ID", "NAME", "DEFAULT?")
-			for _, org := range orgs {
-				fmt.Printf(fs, org.ID, org.Name, org.IsDefault)
-			}
-			return nil
-		}})
-	cloudCmd.AddCommand(organizationSub)
-
-	// k6 cloud test
-	testsSub := &cobra.Command{Use: "test"}
-	// k6 cloud test list
-	testsSub.AddCommand(&cobra.Command{
-		Use: "list",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			tests, err := client.ListCloudTests(c.projId)
-			if err != nil {
-				return err
-			}
-			fs := "%-10v %-25s %-10v \n"
-			fmt.Printf(fs, "ID", "NAME", "PROJECT ID")
-			for _, t := range tests {
-				fmt.Printf(fs, t.ID, t.Name, t.ProjectID)
-			}
-			return nil
-		}})
-	cloudCmd.AddCommand(testsSub)
-
-	// k6 cloud testrun
-	testrunsSub := &cobra.Command{Use: "testrun"}
-
-	// k6 cloud testrun list
-	testrunsSub.AddCommand(&cobra.Command{
-		Args: cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs),
-		Use:  "list [test-id]",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			tests, err := client.ListCloudTestRuns(args[0])
-			if err != nil {
-				return err
-			}
-			fs := "%-10v %-10v %-10v %-10v %-30v %-20s \n"
-			fmt.Printf(fs, "ID", "Status", "VUs", "Duration", "Started", "ERROR")
-			for _, t := range tests {
-				fmt.Printf(fs, t.ID, t.RunStatus, t.Vus, t.Duration, t.Started, t.ErrorDetail)
-			}
-			return nil
-		}})
-	cloudCmd.AddCommand(testrunsSub)
+	cloudCmd.AddCommand(getCloudProjectCmd(client, c))
+	cloudCmd.AddCommand(getCloudLoadZoneCmd(client, c))
+	cloudCmd.AddCommand(getCloudOrganizationCmd(client, c))
+	cloudCmd.AddCommand(getCloudTestCmd(client, c))
+	cloudCmd.AddCommand(getCloudTestRunCmd(client, c))
 
 	return cloudCmd
 }
