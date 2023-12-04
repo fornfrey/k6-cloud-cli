@@ -369,14 +369,13 @@ This will execute the test on the k6 cloud service. Use "k6 login cloud" to auth
 	cloudCmd.Flags().AddFlagSet(c.flagSet())
 	cloudCmd.PersistentFlags().StringVar(&c.orgId, "org-id", "", "Organization id")
 	cloudCmd.PersistentFlags().StringVar(&c.projId, "proj-id", "", "Project id")
-
 	cloudConfig, err := cloudapi.GetConsolidatedConfig(nil, c.gs.Env, "", nil)
 	if err != nil {
 		fmt.Println("%s", err)
 		os.Exit(1)
 	}
 	logger := c.gs.Logger
-	client := cloudapi.NewK6CloudClient(logger, cloudConfig.Token.String, "", consts.Version, cloudConfig.Timeout.TimeDuration())
+	client := cloudapi.NewK6CloudClient(logger, cloudConfig.Token.String, cloudConfig.APIHost.String, consts.Version, cloudConfig.Timeout.TimeDuration())
 
 	// k6 cloud project
 	projectSub := &cobra.Command{Use: "project"}

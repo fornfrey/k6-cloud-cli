@@ -127,7 +127,7 @@ func NewK6CloudClient(logger logrus.FieldLogger, token, host, version string, ti
 		Client{
 			client:        &http.Client{Timeout: timeout},
 			token:         token,
-			baseURL:       "http://api.dev.k6.io",
+			baseURL:       host,
 			version:       version,
 			retries:       MaxRetries,
 			retryInterval: RetryInterval,
