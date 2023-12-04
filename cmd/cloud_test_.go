@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"fmt"
 	"github.com/spf13/cobra"
 	"go.k6.io/k6/cloudapi"
 )
@@ -19,10 +18,14 @@ func getCloudTestCmd(client *cloudapi.K6CloudClient, c *cmdCloud) *cobra.Command
 			if err != nil {
 				return err
 			}
-			fs := "%-10v %-25s %-10v \n"
-			fmt.Printf(fs, "ID", "NAME", "PROJECT ID")
+			out := NewCloudOutput("%-10v %-25s %-10v \n", []string{"ID", "NAME", "PROJECT ID"})
+			defer out.Print()
 			for _, t := range tests {
-				fmt.Printf(fs, t.ID, t.Name, t.ProjectID)
+				out.Add(map[string]any{
+					"ID":         t.ID,
+					"NAME":       t.Name,
+					"PROJECT ID": t.ProjectID,
+				})
 			}
 			return nil
 		}})

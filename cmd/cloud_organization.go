@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"fmt"
 	"github.com/spf13/cobra"
 	"go.k6.io/k6/cloudapi"
 )
@@ -17,10 +16,14 @@ func getCloudOrganizationCmd(client *cloudapi.K6CloudClient, c *cmdCloud) *cobra
 			if err != nil {
 				return err
 			}
-			fs := "%-10v %-25s %-10v\n"
-			fmt.Printf(fs, "ID", "NAME", "DEFAULT?")
+			out := NewCloudOutput("%-10v %-25s %-10v\n", []string{"ID", "NAME", "DEFAULT?"})
+			defer out.Print()
 			for _, org := range orgs {
-				fmt.Printf(fs, org.ID, org.Name, org.IsDefault)
+				out.Add(map[string]any{
+					"ID":       org.ID,
+					"NAME":     org.Name,
+					"DEFAULT?": org.IsDefault,
+				})
 			}
 			return nil
 		}})

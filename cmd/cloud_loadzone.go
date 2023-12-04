@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"fmt"
 	"github.com/spf13/cobra"
 	"go.k6.io/k6/cloudapi"
 )
@@ -17,10 +16,16 @@ func getCloudLoadZoneCmd(client *cloudapi.K6CloudClient, c *cmdCloud) *cobra.Com
 			if err != nil {
 				return err
 			}
-			fs := "%-30v %-25v %-10v %-10v\n"
-			fmt.Printf(fs, "NAME", "ID", "CITY", "COUNTRY")
+
+			out := NewCloudOutput("%-30v %-25v %-10v %-10v\n", []string{"NAME", "ID", "CITY", "COUNTRY"})
+			defer out.Print()
 			for _, lz := range loadzones {
-				fmt.Printf(fs, lz.Name, lz.K6LoadZoneID, lz.City, lz.Country)
+				out.Add(map[string]any{
+					"NAME":    lz.Name,
+					"ID":      lz.ID,
+					"CITY":    lz.City,
+					"COUNTRY": lz.Country,
+				})
 			}
 			return nil
 		}})

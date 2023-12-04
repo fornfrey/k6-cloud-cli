@@ -384,3 +384,41 @@ This will execute the test on the k6 cloud service. Use "k6 login cloud" to auth
 
 	return cloudCmd
 }
+
+// CloudOutput will eventually allow us to putput JSON and other formats. For now it just helps standarise things.
+type CloudOutput struct {
+	format   string
+	headings []string
+	content  []map[string]any
+}
+
+func NewCloudOutput(format string, headings []string) *CloudOutput {
+	return &CloudOutput{format: format, headings: headings}
+}
+
+func (o *CloudOutput) Add(line map[string]any) {
+	o.content = append(o.content, line)
+}
+
+func (o *CloudOutput) PrintHeading() {
+	h := make([]interface{}, len(o.headings))
+	for i := range o.headings {
+		h[i] = o.headings[i]
+	}
+	fmt.Printf(o.format, h...)
+}
+
+func (o *CloudOutput) PrintLine(line map[string]any) {
+	var l []any
+	for _, heading := range o.headings {
+		l = append(l, line[heading])
+	}
+	fmt.Printf(o.format, l...)
+}
+
+func (o *CloudOutput) Print() {
+	o.PrintHeading()
+	for _, line := range o.content {
+		o.PrintLine(line)
+	}
+}

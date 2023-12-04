@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"fmt"
 	"github.com/spf13/cobra"
 	"go.k6.io/k6/cloudapi"
 )
@@ -17,10 +16,14 @@ func getCloudProjectCmd(client *cloudapi.K6CloudClient, c *cmdCloud) *cobra.Comm
 			if err != nil {
 				return err
 			}
-			fs := "%-20s %-20s %-10v\n"
-			fmt.Printf(fs, "NAME", "DESCRIPTION", "DEFAULT?")
+			out := NewCloudOutput("%-20s %-20s %-10v\n", []string{"NAME", "DESCRIPTION", "DEFAULT?"})
+			defer out.Print()
 			for _, p := range projects {
-				fmt.Printf(fs, p.Name, p.Description, p.IsDefault)
+				out.Add(map[string]any{
+					"NAME":        p.Name,
+					"DESCRIPTION": p.Description,
+					"DEFAULT?":    p.IsDefault,
+				})
 			}
 			return nil
 		}})
