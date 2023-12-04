@@ -32,6 +32,9 @@ type cmdCloud struct {
 	showCloudLogs bool
 	exitOnRunning bool
 	uploadOnly    bool
+	orgId         string
+	projId        string
+	testId        string
 }
 
 func (c *cmdCloud) preRun(cmd *cobra.Command, _ []string) error {
@@ -364,6 +367,8 @@ This will execute the test on the k6 cloud service. Use "k6 login cloud" to auth
 	}
 	cloudCmd.Flags().SortFlags = false
 	cloudCmd.Flags().AddFlagSet(c.flagSet())
+	cloudCmd.PersistentFlags().StringVar(&c.orgId, "org-id", "", "Organization id")
+	cloudCmd.PersistentFlags().StringVar(&c.projId, "proj-id", "", "Project id")
 
 	cloudConfig, err := cloudapi.GetConsolidatedConfig(nil, c.gs.Env, "", nil)
 	if err != nil {
@@ -377,7 +382,7 @@ This will execute the test on the k6 cloud service. Use "k6 login cloud" to auth
 	projectSub := &cobra.Command{Use: "project"}
 	// k6 cloud project list
 	projectSub.AddCommand(&cobra.Command{Use: "list", Run: func(cmd *cobra.Command, args []string) {
-		projects, err := client.ListCloudProjects("3")
+		projects, err := client.ListCloudProjects(c.orgId)
 		if err != nil {
 			fmt.Println("%s", err)
 			os.Exit(1)
@@ -395,7 +400,7 @@ This will execute the test on the k6 cloud service. Use "k6 login cloud" to auth
 	loadzoneSub := &cobra.Command{Use: "loadzone"}
 	// k6 cloud loadzone list
 	loadzoneSub.AddCommand(&cobra.Command{Use: "list", Run: func(cmd *cobra.Command, args []string) {
-		loadzones, err := client.ListCloudLoadZones("")
+		loadzones, err := client.ListCloudLoadZones(c.orgId)
 		if err != nil {
 			fmt.Println("%s", err)
 			os.Exit(1)
@@ -429,7 +434,7 @@ This will execute the test on the k6 cloud service. Use "k6 login cloud" to auth
 	testsSub := &cobra.Command{Use: "test"}
 	// k6 cloud test list
 	testsSub.AddCommand(&cobra.Command{Use: "list", Run: func(cmd *cobra.Command, args []string) {
-		tests, err := client.ListCloudTests("")
+		tests, err := client.ListCloudTests(c.projId)
 		if err != nil {
 			fmt.Println("%s", err)
 			os.Exit(1)
@@ -444,9 +449,11 @@ This will execute the test on the k6 cloud service. Use "k6 login cloud" to auth
 
 	// k6 cloud testrun
 	testrunsSub := &cobra.Command{Use: "testrun"}
+
 	// k6 cloud testrun list
-	testrunsSub.AddCommand(&cobra.Command{Use: "list", Run: func(cmd *cobra.Command, args []string) {
-		tests, err := client.ListCloudTestRuns("")
+	testrunsSub.AddCommand(&cobra.Command{Args: cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs), Use: "list [test-id]", Run: func(cmd *cobra.Command, args []string) {
+
+		tests, err := client.ListCloudTestRuns(args[0])
 		if err != nil {
 			fmt.Println("%s", err)
 			os.Exit(1)
