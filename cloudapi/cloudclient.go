@@ -209,7 +209,7 @@ func (c *K6CloudClient) ListCloudTests(projectID string) ([]CloudTest, error) {
 		}
 	}
 
-	url := fmt.Sprintf("%s/loadtests/v2/tests?$select=id,name,test_run_ids,project_id,created,creation_process,trending_metrics&$expand=test_runs($select=id,test_id,load_time,created,run_status,started,duration,vus,result_status,processing_status,run_process,note,error_detail;$top=15;$orderby=id%%20desc)&q=&order_by=-last_run_time&project_id=%s&page_size=20&page=1", c.baseURL, projectID)
+	url := fmt.Sprintf("%s/loadtests/v2/tests?$select=id,name,project_id&project_id=%s", c.baseURL, projectID)
 	testsList := struct {
 		CloudTest []CloudTest `json:"k6-tests"`
 	}{}
@@ -217,5 +217,3 @@ func (c *K6CloudClient) ListCloudTests(projectID string) ([]CloudTest, error) {
 	err = c.Do(req, &testsList)
 	return testsList.CloudTest, err
 }
-
-//https://api.dev.k6.io/loadtests/v2/tests?$select=id,name,test_run_ids,project_id,created,creation_process,trending_metrics&$expand=test_runs($select=id,test_id,load_time,created,run_status,started,duration,vus,result_status,processing_status,run_process,note,error_detail;$top=15;$orderby=id%20desc)&q=&order_by=-last_run_time&project_id=
