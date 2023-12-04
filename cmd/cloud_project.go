@@ -5,14 +5,15 @@ import (
 	"go.k6.io/k6/cloudapi"
 )
 
-func getCloudProjectCmd(client *cloudapi.K6CloudClient, c *cmdCloud) *cobra.Command {
+func getCloudProjectCmd(client *cloudapi.K6CloudClient) *cobra.Command {
 	// k6 cloud project
 	projectSub := &cobra.Command{Use: "project"}
 	// k6 cloud project list
-	projectSub.AddCommand(&cobra.Command{
+	var orgId string
+	listProjects := &cobra.Command{
 		Use: "list",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			projects, err := client.ListCloudProjects(c.orgId)
+			projects, err := client.ListCloudProjects(orgId)
 			if err != nil {
 				return err
 			}
@@ -26,6 +27,10 @@ func getCloudProjectCmd(client *cloudapi.K6CloudClient, c *cmdCloud) *cobra.Comm
 				})
 			}
 			return nil
-		}})
+		}}
+	listProjects.Flags().StringVar(&orgId, "org-id", "", "Organization id")
+
+	projectSub.AddCommand(listProjects)
+
 	return projectSub
 }

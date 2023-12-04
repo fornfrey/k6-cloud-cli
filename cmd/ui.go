@@ -93,6 +93,22 @@ func modifyAndPrintBar(gs *state.GlobalState, bar *pb.ProgressBar, options ...pb
 	printBar(gs, bar)
 }
 
+func printExecutionDescriptionBasic(gs *state.GlobalState, testURL string) {
+	noColor := gs.Flags.NoColor || !gs.Stdout.IsTTY
+	valueColor := getColor(noColor, color.FgCyan)
+
+	buf := &strings.Builder{}
+	fmt.Fprintf(buf, "  execution: %s\n", valueColor.Sprint("cloud"))
+	fmt.Fprintf(buf, "     output: %s\n", valueColor.Sprint(testURL))
+	fmt.Fprintf(buf, "\n")
+
+	if gs.Flags.Quiet {
+		gs.Logger.Debug(buf.String())
+	} else {
+		printToStdout(gs, buf.String())
+	}
+}
+
 // Print execution description for both cloud and local execution.
 // TODO: Clean this up as part of #1499 or #1427
 func printExecutionDescription(
