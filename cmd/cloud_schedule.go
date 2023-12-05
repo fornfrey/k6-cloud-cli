@@ -58,8 +58,44 @@ func getCloudScheduleCmd(client *cloudapi.K6CloudClient) *cobra.Command {
 			return nil
 		}}
 
+	// k6 cloud schedule update
+	var deactivate bool
+	updateSchedule := &cobra.Command{
+		Use:  "update",
+		Args: cobra.MinimumNArgs(2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			testId, err := strconv.ParseInt(args[0], 10, 64)
+			if err != nil {
+				return err
+			}
+
+			isValidFrequency := false
+			validFrequencies := []string{"never", "hourly", "daily", "weekly", "monthly", "yearly"}
+			for _, frequency := range validFrequencies {
+				if args[1] == frequency {
+					isValidFrequency = true
+					break
+				}
+			}
+
+			if !isValidFrequency {
+				errMsg := fmt.Sprintf("%s is not a valid frequency", args[1])
+				return errors.New(errMsg)
+			}
+
+			fmt.Println(testId)
+			err = client.UpdateSchedule(testId, args[1], deactivate)
+			if err != nil {
+				return err
+			}
+			return nil
+		}}
+
+	updateSchedule.Flags().BoolVar(&deactivate, "deactivate", false, "Deactivate the schedule")
+
 	scheduleSub.AddCommand(listSchedule)
 	scheduleSub.AddCommand(setSchedule)
+	scheduleSub.AddCommand(updateSchedule)
 
 	return scheduleSub
 }
