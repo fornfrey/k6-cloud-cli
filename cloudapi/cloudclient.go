@@ -298,7 +298,7 @@ func (c *K6CloudClient) GetCloudTestRun(referenceID string) (*CloudTestRun, erro
 	return &response.TestRun, nil
 }
 
-func (c *K6CloudClient) ListSchedules(orgId string) error {
+func (c *K6CloudClient) ListSchedule(orgId string) error {
 	// TODO: can add proj-id support
 	url := fmt.Sprintf("%s/v4/schedules?organization_id=%s", c.baseURL, orgId)
 
@@ -320,4 +320,27 @@ func (c *K6CloudClient) ListSchedules(orgId string) error {
 	}
 
 	return nil
+}
+
+func (c *K6CloudClient) SetSchedule(testId int64, frequency string) error {
+	url := fmt.Sprintf("%s/v4/schedules", c.baseURL)
+
+	data := struct {
+		TestId    int64          `json:"test_id"`
+		Frequency string         `json:"frequency"`
+		Ends      ScheduleEnds   `json:"ends"`
+		Weekly    ScheduleWeekly `json:"weekly"`
+	}{
+		testId,
+		frequency,
+		ScheduleEnds{Type: "never"}, // TODO: possible to allow the schedule to end
+		ScheduleWeekly{Days: []int{}},
+	}
+
+	req, err := c.NewRequest("POST", url, data)
+	if err != nil {
+		return err
+	}
+
+	return c.Do(req, nil)
 }
