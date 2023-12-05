@@ -114,6 +114,34 @@ type CloudTest struct {
 	CloudTestRun    []CloudTestRun `json:"test_runs"`
 }
 
+type ScheduleEnds struct {
+	Datetime    string `json:"datetime"`
+	Occurrences int64  `json:"occurrences"`
+	Type        string `json:"type"`
+}
+
+type ScheduleWeekly struct {
+	Days []int `json:"days"` // TODO: what is the correct way to handle in go?
+}
+
+type Schedule struct {
+	Active      bool           `json:"active"`
+	Ends        ScheduleEnds   `json:"ends"`
+	Expires     string         `json:"expires"`
+	Frequency   string         `json:"string"`
+	Id          int64          `json:"id"`
+	Interval    int64          `json:"interval"`
+	NextRun     string         `json:"next_run"`
+	Occurrences int64          `json:"occurrences"`
+	Starts      string         `json:"starts"`
+	TestId      int64          `json:"test_id"`
+	Weekly      ScheduleWeekly `json:"weekly"`
+}
+
+type ListSchedulesResponse struct {
+	K6Schedules []Schedule `json:"k6-schedules"`
+}
+
 func (a *Account) DefaultOrganization() *Organization {
 	for _, org := range a.Organizations {
 		if org.IsDefault {
@@ -268,4 +296,28 @@ func (c *K6CloudClient) GetCloudTestRun(referenceID string) (*CloudTestRun, erro
 		return nil, err
 	}
 	return &response.TestRun, nil
+}
+
+func (c *K6CloudClient) ListSchedules(orgId string) error {
+	// TODO: can add proj-id support
+	url := fmt.Sprintf("%s/v4/schedules?organization_id=%s", c.baseURL, orgId)
+
+	req, err := c.NewRequest("GET", url, nil)
+	if err != nil {
+		return err
+	}
+
+	schedules := ListSchedulesResponse{}
+	if err := c.Do(req, &schedules); err != nil {
+		return err
+	}
+
+	// TODO: use common output functionality
+	for _, schedule := range schedules.K6Schedules {
+		fmt.Println("********** Schedules ***************")
+		fmt.Println("test_id", "active", "next_run", "ends_type")
+		fmt.Println(schedule.TestId, schedule.Active, schedule.NextRun, schedule.Ends.Type)
+	}
+
+	return nil
 }
