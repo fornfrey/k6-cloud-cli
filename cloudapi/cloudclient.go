@@ -121,7 +121,7 @@ type ScheduleEnds struct {
 }
 
 type ScheduleWeekly struct {
-	Days []int `json:"days"` // TODO: what is the correct way to handle in go?
+	Days []int `json:"days"`
 }
 
 type Schedule struct {
