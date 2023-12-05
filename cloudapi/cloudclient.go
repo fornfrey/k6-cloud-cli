@@ -369,3 +369,14 @@ func (c *K6CloudClient) UpdateSchedule(scheduleId int64, frequency string, deact
 
 	return c.Do(req, nil)
 }
+
+func (c *K6CloudClient) DeleteSchedule(scheduleId int64) error {
+	url := fmt.Sprintf("%s/v4/schedules/%d", c.baseURL, scheduleId)
+
+	req, err := c.NewRequest("DELETE", url, nil)
+	if err != nil {
+		return err
+	}
+
+	return c.Do(req, nil)
+}

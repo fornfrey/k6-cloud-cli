@@ -19,11 +19,7 @@ func getCloudScheduleCmd(client *cloudapi.K6CloudClient) *cobra.Command {
 	listSchedule := &cobra.Command{
 		Use: "list",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			err := client.ListSchedule(orgId)
-			if err != nil {
-				return err
-			}
-			return nil
+			return client.ListSchedule(orgId)
 		}}
 
 	// k6 cloud schedule set
@@ -50,12 +46,7 @@ func getCloudScheduleCmd(client *cloudapi.K6CloudClient) *cobra.Command {
 				return errors.New(errMsg)
 			}
 
-			fmt.Println(testId)
-			err = client.SetSchedule(testId, args[1])
-			if err != nil {
-				return err
-			}
-			return nil
+			return client.SetSchedule(testId, args[1])
 		}}
 
 	// k6 cloud schedule update
@@ -64,7 +55,7 @@ func getCloudScheduleCmd(client *cloudapi.K6CloudClient) *cobra.Command {
 		Use:  "update",
 		Args: cobra.MinimumNArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			testId, err := strconv.ParseInt(args[0], 10, 64)
+			scheduleId, err := strconv.ParseInt(args[0], 10, 64)
 			if err != nil {
 				return err
 			}
@@ -83,19 +74,28 @@ func getCloudScheduleCmd(client *cloudapi.K6CloudClient) *cobra.Command {
 				return errors.New(errMsg)
 			}
 
-			fmt.Println(testId)
-			err = client.UpdateSchedule(testId, args[1], deactivate)
-			if err != nil {
-				return err
-			}
-			return nil
+			return client.UpdateSchedule(scheduleId, args[1], deactivate)
 		}}
 
 	updateSchedule.Flags().BoolVar(&deactivate, "deactivate", false, "Deactivate the schedule")
 
+	// k6 cloud schedule delete
+	deleteSchedule := &cobra.Command{
+		Use:  "delete",
+		Args: cobra.MinimumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			scheduleId, err := strconv.ParseInt(args[0], 10, 64)
+			if err != nil {
+				return err
+			}
+
+			return client.DeleteSchedule(scheduleId)
+		}}
+
 	scheduleSub.AddCommand(listSchedule)
 	scheduleSub.AddCommand(setSchedule)
 	scheduleSub.AddCommand(updateSchedule)
+	scheduleSub.AddCommand(deleteSchedule)
 
 	return scheduleSub
 }
