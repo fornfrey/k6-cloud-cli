@@ -315,8 +315,8 @@ func (c *K6CloudClient) ListSchedule(orgId string) error {
 	// TODO: use common output functionality
 	for _, schedule := range schedules.K6Schedules {
 		fmt.Println("********** Schedules ***************")
-		fmt.Println("test_id", "active", "next_run", "ends_type")
-		fmt.Println(schedule.TestId, schedule.Active, schedule.NextRun, schedule.Ends.Type)
+		fmt.Println("schedule_id", "test_id", "active", "next_run", "ends_type")
+		fmt.Println(schedule.Id, schedule.TestId, schedule.Active, schedule.NextRun, schedule.Ends.Type)
 	}
 
 	return nil
