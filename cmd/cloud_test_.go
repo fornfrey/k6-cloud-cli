@@ -595,7 +595,41 @@ func getCloudTestCmd(gs *state.GlobalState, client *cloudapi.K6CloudClient) *cob
 		}}
 	listTests.Flags().StringVar(&projId, "proj-id", "", "Project id")
 
-	testsSub.AddCommand(listTests, getCloudCmdRunTest(gs))
+	getTest := &cobra.Command{
+		Args: cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs),
+		Use:  "get [test-id]",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			test, err := client.GetCloudTest(args[0])
+			if err != nil {
+				return err
+			}
+			out := NewCloudInfoOutput("%10s", "%v")
+			defer out.Print()
+			out.Add("ID", test.ID)
+			out.Add("Name", test.Name)
+			out.Add("Created", test.Created)
+			out.Add("Updated", test.Updated)
+			out.Add("Project", test.ProjectID)
+			out.Add("Test Runs", test.TestRunIds)
+			out.Add("Script", truncateLines(test.Script, 50, "\n// ... Use `k6 cloud test download` to the view script"))
+			return err
+		},
+	}
+
+	downloadTest := &cobra.Command{
+		Args: cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs),
+		Use:  "download [test-id]",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			test, err := client.GetCloudTest(args[0])
+			if err != nil {
+				return err
+			}
+			fmt.Print(test.Script)
+			return nil
+		},
+	}
+
+	testsSub.AddCommand(listTests, downloadTest, getTest, getCloudCmdRunTest(gs))
 
 	return testsSub
 }

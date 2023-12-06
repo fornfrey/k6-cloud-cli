@@ -1,16 +1,18 @@
 package cmd
 
 import (
+	"fmt"
 	"github.com/spf13/cobra"
 	"go.k6.io/k6/cloudapi"
+	"go.k6.io/k6/cmd/state"
 )
 
-func getCloudTestRunCmd(client *cloudapi.K6CloudClient) *cobra.Command {
+func getCloudTestRunCmd(gs *state.GlobalState, client *cloudapi.K6CloudClient) *cobra.Command {
 	// k6 cloud testrun
 	testrunsSub := &cobra.Command{Use: "testrun"}
 
 	// k6 cloud testrun list
-	testrunsSub.AddCommand(&cobra.Command{
+	listTestRun := &cobra.Command{
 		Args: cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs),
 		Use:  "list [test-id]",
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -31,6 +33,40 @@ func getCloudTestRunCmd(client *cloudapi.K6CloudClient) *cobra.Command {
 				})
 			}
 			return nil
-		}})
+		}}
+
+	getTestRun := &cobra.Command{
+		Args: cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs),
+		Use:  "get [test-run-id]",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			test, err := client.GetCloudTestRun(args[0])
+			if err != nil {
+				return err
+			}
+			out := NewCloudInfoOutput("%10s", "%v")
+			defer out.Print()
+			out.Add("ID", test.ID)
+			out.Add("Duration", test.Duration)
+			out.Add("Note", test.Note)
+			out.Add("Script", truncateLines(test.Script, 50, "\n... Use `k6 cloud test download` to the view script"))
+			return err
+		},
+	}
+
+	downloadTestRun := &cobra.Command{
+		Args: cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs),
+		Use:  "download [test-run-id]",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			test, err := client.GetCloudTestRun(args[0])
+			if err != nil {
+				return err
+			}
+			fmt.Print(test.Script)
+			return nil
+		},
+	}
+
+	testrunsSub.AddCommand(listTestRun, getTestRun, downloadTestRun, getCloudCmdRunTest(gs))
+
 	return testrunsSub
 }

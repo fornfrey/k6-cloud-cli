@@ -3,9 +3,9 @@ package cmd
 import (
 	"errors"
 	"fmt"
-	"os"
-
 	"github.com/spf13/cobra"
+	"os"
+	"strings"
 
 	"go.k6.io/k6/cloudapi"
 	"go.k6.io/k6/cmd/state"
@@ -45,14 +45,15 @@ func getCmdCloud(gs *state.GlobalState) *cobra.Command {
 		getCloudLoadZoneCmd(client),
 		getCloudOrganizationCmd(client),
 		getCloudTestCmd(gs, client),
-		getCloudTestRunCmd(client),
+		getCloudTestRunCmd(gs, client),
 		getCloudScheduleCmd(client),
 	)
 
 	return cmd
 }
 
-// CloudOutput will eventually allow us to putput JSON and other formats. For now it just helps standarise things.
+// CloudOutput will eventually allow us to output JSON and other formats. For now it just helps standardize things.
+// TODO: This should be renamed
 type CloudOutput struct {
 	format   string
 	headings []string
@@ -88,4 +89,53 @@ func (o *CloudOutput) Print() {
 	for _, line := range o.content {
 		o.PrintLine(line)
 	}
+}
+
+type CloudInfoOutput struct {
+	formatHeadings string
+	formatInfo     string
+	content        [][]any
+}
+
+func NewCloudInfoOutput(formatHeading string, formatInfo string) *CloudInfoOutput {
+	return &CloudInfoOutput{
+		formatHeadings: formatHeading,
+		formatInfo:     formatInfo,
+	}
+}
+
+func (i *CloudInfoOutput) Add(heading string, info any) {
+	i.content = append(i.content, []any{heading, info})
+
+}
+
+func (i *CloudInfoOutput) Print() {
+	for _, line := range i.content {
+		//fmt.Println(strings.Repeat("-", i.longest))
+		c, _ := fmt.Printf(i.formatHeadings, line[0])
+		fmt.Print(": ")
+
+		infoString, ok := line[1].(string)
+		if !ok {
+			fmt.Printf(i.formatInfo, line[1])
+			fmt.Print("\n")
+		} else {
+			lines := strings.Split(infoString, "\n")
+			for p, l := range lines {
+				if p > 0 {
+					fmt.Print(strings.Repeat(" ", c), "  ")
+				}
+				fmt.Printf(i.formatInfo, l)
+				fmt.Print("\n")
+			}
+		}
+	}
+}
+
+func truncateLines(content string, limit int, message string) string {
+	lines := strings.SplitN(content, "\n", limit+1)
+	if len(lines) > limit {
+		lines[limit] = message
+	}
+	return strings.Join(lines, "\n")
 }
