@@ -145,6 +145,22 @@ type ListSchedulesResponse struct {
 	K6Schedules []Schedule `json:"k6-schedules"`
 }
 
+type Metric struct {
+	ID        string `json:"id"`
+	Name      string `json:"name"`
+	Origin    string `json:"origin"`
+	TestRunID int    `json:"test_run_id"`
+	Type      string `json:"type"`
+}
+
+type Threshold struct {
+	CalculatedValue float64 `json:"calculated_value"`
+	ID              int     `json:"id"`
+	Name            string  `json:"name"`
+	Stat            string  `json:"stat"`
+	Tainted         bool    `json:"tainted"`
+}
+
 func (a *Account) DefaultOrganization() *Organization {
 	for _, org := range a.Organizations {
 		if org.IsDefault {
@@ -438,4 +454,83 @@ func (c *K6CloudClient) DeleteSchedule(scheduleId int64) error {
 	}
 
 	return c.Do(req, nil)
+}
+
+func (c *K6CloudClient) GetCloudTestRunMetrics(referenceID string) ([]Metric, error) {
+	url := fmt.Sprintf("%s/cloud/v5/test_runs/%s/metrics", c.baseURL, referenceID)
+
+	req, err := c.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+	response := struct {
+		Value []Metric `json:"value"`
+	}{}
+
+	err = c.Do(req, &response)
+	if err != nil {
+		return nil, err
+	}
+	return response.Value, nil
+}
+
+func (c *K6CloudClient) GetCloudTestRunMetricsAggregate(referenceID, query, metric string) (float64, error) {
+	url := fmt.Sprintf("%s/cloud/v5/test_runs/%s/query_aggregate_k6(query='%s',metric='%s')", c.baseURL, referenceID, query, metric)
+
+	req, err := c.NewRequest("GET", url, nil)
+	if err != nil {
+		return 0, err
+	}
+	response := struct {
+		Data struct {
+			Result []struct {
+				Values [][]float64 `json:"values"`
+			} `json:"result"`
+		} `json:"data"`
+	}{}
+
+	err = c.Do(req, &response)
+	if err != nil {
+		return 0, err
+	}
+	if len(response.Data.Result) != 1 || len(response.Data.Result[0].Values) != 1 || len(response.Data.Result[0].Values[0]) != 2 {
+		return 0, fmt.Errorf("Received ivalid response when fetching %s %s value", metric, query)
+	}
+	return response.Data.Result[0].Values[0][1], nil
+}
+
+func (c *K6CloudClient) GetCloudTestRunThresholds(referenceID string) ([]Threshold, error) {
+	url := fmt.Sprintf("%s/loadtests/v4/test_runs(%s)/thresholds?$select=id,name,stat,tainted,calculated_value", c.baseURL, referenceID)
+
+	req, err := c.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+	response := struct {
+		Value []Threshold `json:"value"`
+	}{}
+
+	err = c.Do(req, &response)
+	if err != nil {
+		return nil, err
+	}
+	return response.Value, nil
+}
+
+func (c *K6CloudClient) GetCloudTestRunHttpUrls(referenceID string) ([]Threshold, error) {
+	url := fmt.Sprintf("%s/loadtests/v4/test_runs(%s)/thresholds?$select=id,name,stat,tainted,calculated_value", c.baseURL, referenceID)
+
+	req, err := c.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+	response := struct {
+		Value []Threshold `json:"value"`
+	}{}
+
+	err = c.Do(req, &response)
+	if err != nil {
+		return nil, err
+	}
+	return response.Value, nil
 }
