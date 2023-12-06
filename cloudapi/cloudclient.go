@@ -98,6 +98,7 @@ type CloudTestRun struct {
 	Started          time.Time `json:"started"`
 	TestID           int64     `json:"test_id"`
 	Vus              int       `json:"vus"`
+	Script           string    `json:"script"`
 
 	RuntimeConfig struct {
 		TestRunDetails null.String `json:"testRunDetails"`
@@ -106,12 +107,14 @@ type CloudTestRun struct {
 
 type CloudTest struct {
 	Created         time.Time      `json:"created"`
+	Updated         time.Time      `json:"updated"`
 	CreationProcess string         `json:"creation_process"`
 	ID              int            `json:"id"`
 	Name            string         `json:"name"`
 	ProjectID       int            `json:"project_id"`
 	TestRunIds      []int          `json:"test_run_ids"`
 	CloudTestRun    []CloudTestRun `json:"test_runs"`
+	Script          string         `json:"script"`
 }
 
 type ScheduleEnds struct {
@@ -281,7 +284,7 @@ func (c *K6CloudClient) StartCloudTest(testID int64) (*CloudTestRun, error) {
 }
 
 func (c *K6CloudClient) GetCloudTestRun(referenceID string) (*CloudTestRun, error) {
-	url := fmt.Sprintf("%s/loadtests/v2/runs/%s?$select=id,duration", c.baseURL, referenceID)
+	url := fmt.Sprintf("%s/loadtests/v2/runs/%s?$select=id,duration,script,note", c.baseURL, referenceID)
 
 	req, err := c.NewRequest("GET", url, nil)
 	if err != nil {
@@ -296,6 +299,24 @@ func (c *K6CloudClient) GetCloudTestRun(referenceID string) (*CloudTestRun, erro
 		return nil, err
 	}
 	return &response.TestRun, nil
+}
+
+func (c *K6CloudClient) GetCloudTest(testId string) (*CloudTest, error) {
+	url := fmt.Sprintf("%s/loadtests/v2/tests/%s", c.baseURL, testId)
+
+	req, err := c.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+	response := struct {
+		CloudTest CloudTest `json:"k6-test"`
+	}{}
+
+	err = c.Do(req, &response)
+	if err != nil {
+		return nil, err
+	}
+	return &response.CloudTest, nil
 }
 
 func (c *K6CloudClient) ListSchedule(orgId string) error {
