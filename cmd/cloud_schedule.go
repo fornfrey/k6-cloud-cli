@@ -51,33 +51,43 @@ func getCloudScheduleCmd(client *cloudapi.K6CloudClient) *cobra.Command {
 
 	// k6 cloud schedule update
 	var deactivate bool
+	var activate bool
 	updateSchedule := &cobra.Command{
 		Use:  "update",
-		Args: cobra.MinimumNArgs(2),
+		Args: cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			scheduleId, err := strconv.ParseInt(args[0], 10, 64)
 			if err != nil {
 				return err
 			}
 
-			isValidFrequency := false
-			validFrequencies := []string{"never", "hourly", "daily", "weekly", "monthly", "yearly"}
-			for _, frequency := range validFrequencies {
-				if args[1] == frequency {
-					isValidFrequency = true
-					break
+			frequency := ""
+
+			if len(args) > 1 {
+
+				isValidFrequency := false
+				validFrequencies := []string{"never", "hourly", "daily", "weekly", "monthly", "yearly"}
+				for _, frequency := range validFrequencies {
+					if args[1] == frequency {
+						isValidFrequency = true
+						break
+					}
 				}
+
+				if !isValidFrequency {
+					errMsg := fmt.Sprintf("%s is not a valid frequency", args[1])
+					return errors.New(errMsg)
+				}
+
+				frequency = args[1]
 			}
 
-			if !isValidFrequency {
-				errMsg := fmt.Sprintf("%s is not a valid frequency", args[1])
-				return errors.New(errMsg)
-			}
+			return client.UpdateSchedule(scheduleId, frequency, deactivate, activate)
 
-			return client.UpdateSchedule(scheduleId, args[1], deactivate)
 		}}
 
 	updateSchedule.Flags().BoolVar(&deactivate, "deactivate", false, "Deactivate the schedule")
+	updateSchedule.Flags().BoolVar(&activate, "activate", false, "Activate the schedule")
 
 	// k6 cloud schedule delete
 	deleteSchedule := &cobra.Command{

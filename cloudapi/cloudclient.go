@@ -345,26 +345,46 @@ func (c *K6CloudClient) SetSchedule(testId int64, frequency string) error {
 	return c.Do(req, nil)
 }
 
-func (c *K6CloudClient) UpdateSchedule(scheduleId int64, frequency string, deactivate bool) error {
+func (c *K6CloudClient) UpdateSchedule(scheduleId int64, frequency string, deactivate bool, activate bool) error {
 	url := fmt.Sprintf("%s/v4/schedules/%d", c.baseURL, scheduleId)
 
-	active := true
+	var req *http.Request
+	var err error
 
 	if deactivate {
-		active = false
-	}
+		data := struct {
+			Active bool `json:"active"`
+		}{
+			false,
+		}
 
-	data := struct {
-		Frequency string `json:"frequency"`
-		Active    bool   `json:"active"`
-	}{
-		frequency,
-		active,
-	}
+		req, err = c.NewRequest("PATCH", url, data)
+		if err != nil {
+			return err
+		}
+	} else if activate {
+		data := struct {
+			Active bool `json:"active"`
+		}{
+			true,
+		}
 
-	req, err := c.NewRequest("PATCH", url, data)
-	if err != nil {
-		return err
+		req, err = c.NewRequest("PATCH", url, data)
+		if err != nil {
+			return err
+		}
+	} else {
+		data := struct {
+			Frequency string `json:"frequency"`
+		}{
+			frequency,
+		}
+
+		req, err = c.NewRequest("PATCH", url, data)
+		if err != nil {
+			return err
+		}
+
 	}
 
 	return c.Do(req, nil)
