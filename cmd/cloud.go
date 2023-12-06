@@ -46,6 +46,7 @@ func getCmdCloud(gs *state.GlobalState) *cobra.Command {
 		getCloudOrganizationCmd(client),
 		getCloudTestCmd(gs, client),
 		getCloudTestRunCmd(client),
+		getCloudScheduleCmd(client),
 	)
 
 	return cmd
