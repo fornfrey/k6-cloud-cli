@@ -186,6 +186,62 @@ func (s *StaticIP) ProvisioningStatusString() string {
 	return "Unknown"
 }
 
+type Check struct {
+	MetricSummary struct {
+		FailCount    int     `json:"fail_count"`
+		SuccessCount int     `json:"success_count"`
+		SuccessRate  float64 `json:"success_rate"`
+	} `json:"metric_summary"`
+	Name string `json:"name"`
+}
+
+type HTTPUrl struct {
+	ExpectedResponse  bool `json:"expected_response"`
+	HTTPMetricSummary struct {
+		Duration struct {
+			Max   float64 `json:"max"`
+			Mean  float64 `json:"mean"`
+			Min   float64 `json:"min"`
+			P95   float64 `json:"p95"`
+			P99   float64 `json:"p99"`
+			Stdev float64 `json:"stdev"`
+		} `json:"duration"`
+		RequestsCount int `json:"requests_count"`
+	} `json:"http_metric_summary"`
+	Method   string `json:"method"`
+	Name     string `json:"name"`
+	Scenario string `json:"scenario"`
+	Status   int    `json:"status"`
+}
+
+type TestRunSummary struct {
+	ChecksMetricSummary struct {
+		HitsSuccesses null.Int `json:"hits_successes"`
+		HitsTotal     null.Int `json:"hits_total"`
+		Successes     int      `json:"successes"`
+		Total         int      `json:"total"`
+	} `json:"checks_metric_summary"`
+	HTTPMetricSummary struct {
+		Duration struct {
+			Count int     `json:"count"`
+			Max   float64 `json:"max"`
+			Mean  float64 `json:"mean"`
+			Min   float64 `json:"min"`
+			P95   float64 `json:"p95"`
+			P99   float64 `json:"p99"`
+			Stdev float64 `json:"stdev"`
+		} `json:"duration"`
+		FailuresCount int     `json:"failures_count"`
+		RequestsCount int     `json:"requests_count"`
+		RpsMax        float64 `json:"rps_max"`
+		RpsMean       float64 `json:"rps_mean"`
+	} `json:"http_metric_summary"`
+	ThresholdsSummary struct {
+		Successes int `json:"successes"`
+		Total     int `json:"total"`
+	} `json:"thresholds_summary"`
+}
+
 func (a *Account) DefaultOrganization() *Organization {
 	for _, org := range a.Organizations {
 		if org.IsDefault {
@@ -506,6 +562,22 @@ func (c *K6CloudClient) DeleteSchedule(scheduleId int64) error {
 
 }
 
+func (c *K6CloudClient) GetCloudTestRunSummary(referenceID string) (*TestRunSummary, error) {
+	url := fmt.Sprintf("%s/loadtests/v4/test_runs(%s)?$select=http_metric_summary,thresholds_summary,checks_metric_summary", c.baseURL, referenceID)
+
+	req, err := c.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+	response := &TestRunSummary{}
+
+	err = c.Do(req, response)
+	if err != nil {
+		return nil, err
+	}
+	return response, nil
+}
+
 func (c *K6CloudClient) GetCloudTestRunMetrics(referenceID string) ([]Metric, error) {
 	url := fmt.Sprintf("%s/cloud/v5/test_runs/%s/metrics", c.baseURL, referenceID)
 
@@ -567,15 +639,33 @@ func (c *K6CloudClient) GetCloudTestRunThresholds(referenceID string) ([]Thresho
 	return response.Value, nil
 }
 
-func (c *K6CloudClient) GetCloudTestRunHttpUrls(referenceID string) ([]Threshold, error) {
-	url := fmt.Sprintf("%s/loadtests/v4/test_runs(%s)/thresholds?$select=id,name,stat,tainted,calculated_value", c.baseURL, referenceID)
+func (c *K6CloudClient) GetCloudTestRunChecks(referenceID string) ([]Check, error) {
+	url := fmt.Sprintf("%s/loadtests/v4/test_runs(%s)/checks?$select=name,metric_summary&$filter=group_id%%20eq%%20null", c.baseURL, referenceID)
 
 	req, err := c.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, err
 	}
 	response := struct {
-		Value []Threshold `json:"value"`
+		Value []Check `json:"value"`
+	}{}
+
+	err = c.Do(req, &response)
+	if err != nil {
+		return nil, err
+	}
+	return response.Value, nil
+}
+
+func (c *K6CloudClient) GetCloudTestRunHttpUrls(referenceID string) ([]HTTPUrl, error) {
+	url := fmt.Sprintf("%s/loadtests/v4/test_runs(%s)/http_urls?$select=id,scenario_id,group_id,name,method,status,scenario,expected_response,http_metric_summary&$filter=group_id%%20eq%%20null", c.baseURL, referenceID)
+
+	req, err := c.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+	response := struct {
+		Value []HTTPUrl `json:"value"`
 	}{}
 
 	err = c.Do(req, &response)
