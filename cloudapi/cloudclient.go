@@ -319,6 +319,24 @@ func (c *K6CloudClient) GetCloudTest(testId string) (*CloudTest, error) {
 	return &response.CloudTest, nil
 }
 
+func (c *K6CloudClient) PatchCloudTest(testId string, data map[string]string) (*CloudTest, error) {
+	url := fmt.Sprintf("%s/loadtests/v2/tests/%s", c.baseURL, testId)
+
+	req, err := c.NewRequest("PATCH", url, data)
+	if err != nil {
+		return nil, err
+	}
+	response := struct {
+		CloudTest CloudTest `json:"k6-test"`
+	}{}
+
+	err = c.Do(req, &response)
+	if err != nil {
+		return nil, err
+	}
+	return &response.CloudTest, nil
+}
+
 func (c *K6CloudClient) ListSchedule(orgId string) error {
 	// TODO: can add proj-id support
 	url := fmt.Sprintf("%s/v4/schedules?organization_id=%s", c.baseURL, orgId)
