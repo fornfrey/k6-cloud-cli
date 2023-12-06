@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"sync"
@@ -330,7 +331,7 @@ func (c *cmdCloudRunTest) runWithScript(cmd *cobra.Command, args []string) error
 	return nil
 }
 
-func (c *cmdCloudRunTest) runById(cmd *cobra.Command, args []string) error {
+func (c *cmdCloudRunTest) RunById(cmd *cobra.Command, args []string) error {
 	printBanner(c.gs)
 
 	progressBar := pb.New(
@@ -508,7 +509,7 @@ func (c *cmdCloudRunTest) run(cmd *cobra.Command, args []string) error {
 	if c.testID == testIDNotSet {
 		return c.runWithScript(cmd, args)
 	} else {
-		return c.runById(cmd, args)
+		return c.RunById(cmd, args)
 	}
 }
 
@@ -629,7 +630,81 @@ func getCloudTestCmd(gs *state.GlobalState, client *cloudapi.K6CloudClient) *cob
 		},
 	}
 
-	testsSub.AddCommand(listTests, downloadTest, getTest, getCloudCmdRunTest(gs))
+	var run bool
+	editTest := &cobra.Command{
+		Args: cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs),
+		Use:  "edit [test-id]",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			testID, err := strconv.ParseInt(args[0], 10, 64)
+			if err != nil {
+				return err
+			}
+			test, err := client.GetCloudTest(args[0])
+			if err != nil {
+				return err
+			}
+			f, err := os.CreateTemp("", fmt.Sprintf("k6-test-%s-*", args[0]))
+			defer os.Remove(f.Name())
+			if err != nil {
+				return err
+			}
+			_, err = f.WriteString(test.Script)
+			if err != nil {
+				return err
+			}
+			err = f.Close()
+			if err != nil {
+				return err
+			}
+
+			editor := "vim"
+			if s := os.Getenv("EDITOR"); s != "" {
+				editor = s
+			}
+
+			command := exec.Command("sh", "-c", editor+" "+f.Name())
+			command.Stdin = os.Stdin
+			command.Stdout = os.Stdout
+			command.Stderr = os.Stderr
+			err = command.Run()
+
+			newScript, err := os.ReadFile(f.Name())
+			if err != nil {
+				return err
+			}
+
+			test, err = client.PatchCloudTest(args[0], map[string]string{
+				"script": string(newScript),
+			})
+			if err != nil {
+				return err
+			}
+
+			if run {
+				crt := &cmdCloudRunTest{
+					gs:     gs,
+					testID: int64(testID),
+				}
+				err = crt.RunById(cmd, args)
+			} else {
+				out := NewCloudInfoOutput("%10s", "%v")
+				defer out.Print()
+				out.Add("ID", test.ID)
+				out.Add("Name", test.Name)
+				out.Add("Created", test.Created)
+				out.Add("Updated", test.Updated)
+				out.Add("Project", test.ProjectID)
+				out.Add("Test Runs", test.TestRunIds)
+				out.Add("Script", truncateLines(test.Script, 50, "\n// ... Use `k6 cloud test download` to the view script"))
+			}
+
+			return err
+
+		},
+	}
+	editTest.Flags().BoolVar(&run, "run", false, "Run the test after saving")
+
+	testsSub.AddCommand(listTests, downloadTest, editTest, getTest, getCloudCmdRunTest(gs))
 
 	return testsSub
 }
