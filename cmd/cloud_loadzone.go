@@ -18,14 +18,16 @@ func getCloudLoadZoneCmd(client *cloudapi.K6CloudClient) *cobra.Command {
 				return err
 			}
 
-			out := NewCloudOutput("%-30v %-25v %-10v %-10v\n", []string{"NAME", "ID", "CITY", "COUNTRY"})
+			out := NewCloudOutput("%-30v %-25v %-10v %-10v %-15v %-15v\n", []string{"Name", "ID", "City", "Country", "Latitude", "Longitude"})
 			defer out.Print()
 			for _, lz := range loadzones {
 				out.Add(map[string]any{
-					"NAME":    lz.Name,
-					"ID":      lz.ID,
-					"CITY":    lz.City,
-					"COUNTRY": lz.Country,
+					"Name":      lz.Name,
+					"ID":        lz.K6LoadZoneID,
+					"City":      lz.City,
+					"Country":   lz.Country,
+					"Latitude":  lz.Latitude,
+					"Longitude": lz.Longitude,
 				})
 			}
 			return nil
