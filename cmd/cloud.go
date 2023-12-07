@@ -3,9 +3,10 @@ package cmd
 import (
 	"errors"
 	"fmt"
-	"github.com/spf13/cobra"
 	"os"
 	"strings"
+
+	"github.com/spf13/cobra"
 
 	"go.k6.io/k6/cloudapi"
 	"go.k6.io/k6/cmd/state"
@@ -48,6 +49,7 @@ func getCmdCloud(gs *state.GlobalState) *cobra.Command {
 		getCloudTestRunCmd(gs, client),
 		getCloudScheduleCmd(client),
 		getCloudScriptValidateCmd(gs),
+		getCloudLoginCmd(gs),
 	)
 
 	return cmd
