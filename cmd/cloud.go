@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"text/tabwriter"
 
 	"github.com/spf13/cobra"
 
@@ -60,13 +61,15 @@ func getCmdCloud(gs *state.GlobalState) *cobra.Command {
 // CloudOutput will eventually allow us to output JSON and other formats. For now it just helps standardize things.
 // TODO: This should be renamed
 type CloudOutput struct {
-	format   string
-	headings []string
-	content  []map[string]any
+	format    string
+	headings  []string
+	content   []map[string]any
+	tabWriter *tabwriter.Writer
 }
 
 func NewCloudOutput(format string, headings []string) *CloudOutput {
-	return &CloudOutput{format: format, headings: headings}
+	w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', tabwriter.AlignRight)
+	return &CloudOutput{format: format, headings: headings, tabWriter: w}
 }
 
 func (o *CloudOutput) Add(line map[string]any) {
@@ -81,6 +84,12 @@ func (o *CloudOutput) PrintHeading() {
 	fmt.Printf(o.format, h...)
 }
 
+func (o *CloudOutput) PrintHeadingTabled() {
+	headings := strings.Join(o.headings, "\t")
+	headings += "\t" // we need the last tab for it to be alligned
+	fmt.Fprintln(o.tabWriter, headings)
+}
+
 func (o *CloudOutput) PrintLine(line map[string]any) {
 	var l []any
 	for _, heading := range o.headings {
@@ -89,11 +98,28 @@ func (o *CloudOutput) PrintLine(line map[string]any) {
 	fmt.Printf(o.format, l...)
 }
 
+func (o *CloudOutput) PrintLineTabled(line map[string]any) {
+	var l []any
+	for _, heading := range o.headings {
+		l = append(l, line[heading])
+	}
+	fmt.Fprintf(o.tabWriter, o.format, l...)
+}
+
 func (o *CloudOutput) Print() {
 	o.PrintHeading()
 	for _, line := range o.content {
 		o.PrintLine(line)
 	}
+}
+
+func (o *CloudOutput) PrintTabled() {
+	o.PrintHeadingTabled()
+	for _, line := range o.content {
+		o.PrintLineTabled(line)
+	}
+
+	o.tabWriter.Flush()
 }
 
 func (o *CloudOutput) Json() error {

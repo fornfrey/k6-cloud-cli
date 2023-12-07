@@ -12,6 +12,7 @@ import (
 func getCloudScheduleCmd(client *cloudapi.K6CloudClient) *cobra.Command {
 	// k6 cloud schedule
 	var orgId string
+	var jsonOutput bool
 	scheduleSub := &cobra.Command{Use: "schedule"}
 	scheduleSub.PersistentFlags().StringVar(&orgId, "org-id", "", "Organization id")
 
@@ -19,8 +20,31 @@ func getCloudScheduleCmd(client *cloudapi.K6CloudClient) *cobra.Command {
 	listSchedule := &cobra.Command{
 		Use: "list",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return client.ListSchedule(orgId)
+			schedules, err := client.ListSchedule(orgId, jsonOutput)
+			if err != nil {
+				return err
+			}
+
+			out := NewCloudOutput("%d\t%d\t%t\t%s\t%s\t\n", []string{"schedule_id", "test_id", "active", "next_run", "ends_type"})
+			if jsonOutput {
+				defer out.Json()
+			} else {
+				defer out.PrintTabled()
+			}
+			for _, schedule := range schedules {
+				out.Add(map[string]any{
+					"schedule_id": schedule.Id,
+					"test_id":     schedule.TestId,
+					"active":      schedule.Active,
+					"next_run":    schedule.NextRun,
+					"ends_type":   schedule.Ends.Type,
+				})
+			}
+
+			return nil
 		}}
+
+	listSchedule.Flags().BoolVar(&jsonOutput, "json", false, "Output in JSON")
 
 	// k6 cloud schedule set
 	setSchedule := &cobra.Command{

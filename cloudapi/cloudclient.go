@@ -3,9 +3,7 @@ package cloudapi
 import (
 	"fmt"
 	"net/http"
-	"os"
 	"strconv"
-	"text/tabwriter"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -378,33 +376,21 @@ func (c *K6CloudClient) PatchCloudTest(testId string, data map[string]string) (*
 	return &response.CloudTest, nil
 }
 
-func (c *K6CloudClient) ListSchedule(orgId string) error {
+func (c *K6CloudClient) ListSchedule(orgId string, jsonOutput bool) ([]Schedule, error) {
 	// TODO: can add proj-id support
 	url := fmt.Sprintf("%s/v4/schedules?organization_id=%s", c.baseURL, orgId)
 
 	req, err := c.NewRequest("GET", url, nil)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	schedules := ListSchedulesResponse{}
 	if err := c.Do(req, &schedules); err != nil {
-		return err
+		return nil, err
 	}
 
-	// TODO: use common output functionality
-	fmt.Println("********** Schedules ***************")
-	fmt.Println()
-
-	w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', tabwriter.AlignRight)
-
-	fmt.Fprintf(w, "schedule_id\ttest_id\tactive\tnext_run\tends_type\t\n")
-	for _, schedule := range schedules.K6Schedules {
-		fmt.Fprintf(w, "%d\t%d\t%t\t%s\t%s\t\n", schedule.Id, schedule.TestId, schedule.Active, schedule.NextRun, schedule.Ends.Type)
-	}
-	w.Flush()
-
-	return nil
+	return schedules.K6Schedules, err
 }
 
 func (c *K6CloudClient) SetSchedule(testId int64, frequency string) error {
