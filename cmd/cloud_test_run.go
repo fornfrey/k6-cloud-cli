@@ -86,18 +86,13 @@ func getCloudTestRunCmd(gs *state.GlobalState, client *cloudapi.K6CloudClient) *
 		},
 	}
 
-	cmdShowTestSummary := cmdShowTestSummary{}
 	showTestSummary := &cobra.Command{
 		Args: cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs),
 		Use:  "summary [test-run-id]",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cmdShowTestSummary.testRunID = args[0]
-			return cmdShowTestSummary.showTestRunSummary(client, gs)
+			return showTestRunSummary(args[0], client, gs)
 		},
 	}
-	showTestSummary.Flags().BoolVar(&cmdShowTestSummary.thresholds, "thresholds", true, "show thresholds")
-	showTestSummary.Flags().BoolVar(&cmdShowTestSummary.checks, "checks", true, "show thresholds")
-	showTestSummary.Flags().BoolVar(&cmdShowTestSummary.httpUrls, "http-urls", true, "show http urls")
 
 	testrunsSub.AddCommand(listTestRun, getTestRun, downloadTestRun, getCloudCmdRunTest(gs), showTestSummary)
 
@@ -120,7 +115,7 @@ type metricSummary struct {
 	Aggregates []*metricAggregate
 }
 
-func (c *cmdShowTestSummary) showTestRunSummary(client *cloudapi.K6CloudClient, gs *state.GlobalState) error {
+func showTestRunSummary(testRunID string, client *cloudapi.K6CloudClient, gs *state.GlobalState) error {
 
 	var (
 		testRun         *cloudapi.CloudTestRun
@@ -133,32 +128,32 @@ func (c *cmdShowTestSummary) showTestRunSummary(client *cloudapi.K6CloudClient, 
 
 	tasks := []chan error{
 		runAsync(func() error {
-			value, err := client.GetCloudTestRun(c.testRunID)
+			value, err := client.GetCloudTestRun(testRunID)
 			testRun = value
 			return err
 		}),
 		runAsync(func() error {
-			value, err := client.GetCloudTestRunSummary(c.testRunID)
+			value, err := client.GetCloudTestRunSummary(testRunID)
 			testRunSummary = value
 			return err
 		}),
 		runAsync(func() error {
-			value, err := fetchMetricSummaries(c.testRunID, client)
+			value, err := fetchMetricSummaries(testRunID, client)
 			metricSummaries = value
 			return err
 		}),
 		runAsync(func() error {
-			value, err := client.GetCloudTestRunThresholds(c.testRunID)
+			value, err := client.GetCloudTestRunThresholds(testRunID)
 			thresholds = value
 			return err
 		}),
 		runAsync(func() error {
-			value, err := client.GetCloudTestRunChecks(c.testRunID)
+			value, err := client.GetCloudTestRunChecks(testRunID)
 			checks = value
 			return err
 		}),
 		runAsync(func() error {
-			value, err := client.GetCloudTestRunHttpUrls(c.testRunID)
+			value, err := client.GetCloudTestRunHttpUrls(testRunID)
 			httpUrls = value
 			return err
 		}),
@@ -213,45 +208,40 @@ func (c *cmdShowTestSummary) showTestRunSummary(client *cloudapi.K6CloudClient, 
 	showMetrics(NewLeftPaddedWriter(output, leftPadding), metricSummaries, noColor)
 	currentField += 1
 
-	if c.thresholds {
-		fmt.Fprintln(output)
-		fmt.Fprint(output, fieldLines[currentField])
-		if err := showThresholds(
-			NewLeftPaddedWriter(output, leftPadding),
-			testRunSummary,
-			thresholds,
-			noColor,
-		); err != nil {
-			return err
-		}
+	fmt.Fprintln(output)
+	fmt.Fprint(output, fieldLines[currentField])
+	if err := showThresholds(
+		NewLeftPaddedWriter(output, leftPadding),
+		testRunSummary,
+		thresholds,
+		noColor,
+	); err != nil {
+		return err
+	}
+
+	currentField += 1
+
+	fmt.Fprintln(output)
+	fmt.Fprint(output, fieldLines[currentField])
+	if err := showChecks(
+		NewLeftPaddedWriter(output, leftPadding),
+		testRunSummary,
+		checks,
+		noColor,
+	); err != nil {
+		return err
 	}
 	currentField += 1
 
-	if c.checks {
-		fmt.Fprintln(output)
-		fmt.Fprint(output, fieldLines[currentField])
-		if err := showChecks(
-			NewLeftPaddedWriter(output, leftPadding),
-			testRunSummary,
-			checks,
-			noColor,
-		); err != nil {
-			return err
-		}
-	}
-	currentField += 1
-
-	if c.httpUrls {
-		fmt.Fprintln(output)
-		fmt.Fprint(output, fieldLines[currentField])
-		if err := showHttpUrls(
-			NewLeftPaddedWriter(output, leftPadding),
-			testRunSummary,
-			httpUrls,
-			noColor,
-		); err != nil {
-			return err
-		}
+	fmt.Fprintln(output)
+	fmt.Fprint(output, fieldLines[currentField])
+	if err := showHttpUrls(
+		NewLeftPaddedWriter(output, leftPadding),
+		testRunSummary,
+		httpUrls,
+		noColor,
+	); err != nil {
+		return err
 	}
 
 	fmt.Println(output.String())
