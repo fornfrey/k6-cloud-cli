@@ -49,8 +49,8 @@ type Organization struct {
 	IsPersonal        bool      `json:"is_personal"`
 	DataRetentionDays int       `json:"data_retention_days"`
 	Vuh               float64   `json:"vuh"`
-	VuhMax            int       `json:"vuh_max"`
-	VuhOvercharge     int       `json:"vuh_overcharge"`
+	VuhMax            float64   `json:"vuh_max"`
+	VuhOvercharge     float64   `json:"vuh_overcharge"`
 }
 
 type LoadZone struct {

@@ -47,6 +47,7 @@ func getCmdCloud(gs *state.GlobalState) *cobra.Command {
 		getCloudTestCmd(gs, client),
 		getCloudTestRunCmd(gs, client),
 		getCloudScheduleCmd(client),
+		getCloudScriptValidateCmd(gs),
 	)
 
 	return cmd
