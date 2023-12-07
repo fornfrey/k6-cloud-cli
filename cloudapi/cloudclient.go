@@ -163,6 +163,29 @@ type Threshold struct {
 	Tainted         bool    `json:"tainted"`
 }
 
+type StaticIP struct {
+	ID                 int    `json:"id"`
+	IP                 string `json:"ip"`
+	LoadZoneIdentifier string `json:"load_zone_identifier"`
+	ProvisioningStatus int    `json:"provisioning_status"`
+}
+
+func (s *StaticIP) ProvisioningStatusString() string {
+	val, ok := map[int]string{
+		0: "Provisioning",
+		1: "Provisioning Error",
+		5: "Provisioning Error",
+		2: "Provisioned",
+		3: "Releasing",
+		4: "Releasing Error",
+		6: "Released",
+	}[s.ProvisioningStatus]
+	if ok {
+		return val
+	}
+	return "Unknown"
+}
+
 func (a *Account) DefaultOrganization() *Organization {
 	for _, org := range a.Organizations {
 		if org.IsDefault {
@@ -560,4 +583,24 @@ func (c *K6CloudClient) GetCloudTestRunHttpUrls(referenceID string) ([]Threshold
 		return nil, err
 	}
 	return response.Value, nil
+}
+
+func (c *K6CloudClient) ListCloudStaticIPs(organizationID string) ([]StaticIP, error) {
+	account, err := c.GetAccount()
+	if organizationID == "" {
+		organizationID = strconv.Itoa(account.DefaultOrganization().ID)
+	}
+
+	url := fmt.Sprintf("%s/v4/static-ips/%s", c.baseURL, organizationID)
+
+	list := struct {
+		StaticIP []StaticIP `json:"object"`
+	}{}
+
+	req, err := c.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+	err = c.Do(req, &list)
+	return list.StaticIP, err
 }

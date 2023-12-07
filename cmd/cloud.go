@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -50,6 +51,7 @@ func getCmdCloud(gs *state.GlobalState) *cobra.Command {
 		getCloudScheduleCmd(client),
 		getCloudScriptValidateCmd(gs),
 		getCloudLoginCmd(gs),
+		getCloudStaticIPCmd(client),
 	)
 
 	return cmd
@@ -92,6 +94,15 @@ func (o *CloudOutput) Print() {
 	for _, line := range o.content {
 		o.PrintLine(line)
 	}
+}
+
+func (o *CloudOutput) Json() error {
+	bytes, err := json.Marshal(o.content)
+	if err != nil {
+		return err
+	}
+	fmt.Print(string(bytes))
+	return nil
 }
 
 type CloudInfoOutput struct {
