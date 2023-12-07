@@ -123,6 +123,7 @@ type metricSummary struct {
 func (c *cmdShowTestSummary) showTestRunSummary(client *cloudapi.K6CloudClient, gs *state.GlobalState) error {
 
 	var (
+		testRun         *cloudapi.CloudTestRun
 		testRunSummary  *cloudapi.TestRunSummary
 		metricSummaries []metricSummary
 		thresholds      []cloudapi.Threshold
@@ -131,6 +132,11 @@ func (c *cmdShowTestSummary) showTestRunSummary(client *cloudapi.K6CloudClient, 
 	)
 
 	tasks := []chan error{
+		runAsync(func() error {
+			value, err := client.GetCloudTestRun(c.testRunID)
+			testRun = value
+			return err
+		}),
 		runAsync(func() error {
 			value, err := client.GetCloudTestRunSummary(c.testRunID)
 			testRunSummary = value
@@ -168,32 +174,48 @@ func (c *cmdShowTestSummary) showTestRunSummary(client *cloudapi.K6CloudClient, 
 	noColor := gs.Flags.NoColor || !gs.Stdout.IsTTY
 
 	fieldCells := [][]string{
+		{"execution", ":"},
+		{"duration", ":"},
+		{"vuh cost", ":"},
 		{"metrics", ":"},
 		{"thresholds", ":"},
 		{"checks", ":"},
 		{"http", ":"},
 	}
 
+	rightFieldPadding := strings.Repeat(" ", 2)
 	fieldLines := formatTableBlocks(tableBlock{
 		cells:   fieldCells,
 		padding: 2,
 		padchar: ' ',
 		flags:   tabwriter.AlignRight,
 	})
+	for i := range fieldLines {
+		fieldLines[i] += rightFieldPadding
+	}
 
 	output := new(bytes.Buffer)
-	currentField := 0
-	rightFieldPadding := strings.Repeat(" ", 2)
-	leftPadding := strings.Repeat(" ", len(fieldLines[currentField])) + rightFieldPadding
+	valueColor := getColor(noColor, color.FgCyan)
 
+	execution := "local"
+	if len(testRun.Distribution) > 0 {
+		execution = "cloud"
+	}
+
+	fmt.Fprintf(output, "%s%s\n", fieldLines[0], valueColor.Sprint(execution))
+	fmt.Fprintf(output, "%s%s\n", fieldLines[1], valueColor.Sprintf("%.2fs", testRun.ExecutionDuration))
+	fmt.Fprintf(output, "%s%s\n\n", fieldLines[2], valueColor.Sprintf("%.2f VUh", testRun.VuhCost))
+
+	currentField := 3
+	leftPadding := strings.Repeat(" ", len(fieldLines[currentField])) + rightFieldPadding
 	// pritnt metric aggregates
-	fmt.Fprint(output, fieldLines[currentField]+rightFieldPadding)
+	fmt.Fprint(output, fieldLines[currentField])
 	showMetrics(NewLeftPaddedWriter(output, leftPadding), metricSummaries, noColor)
 	currentField += 1
 
 	if c.thresholds {
 		fmt.Fprintln(output)
-		fmt.Fprint(output, fieldLines[currentField]+rightFieldPadding)
+		fmt.Fprint(output, fieldLines[currentField])
 		if err := showThresholds(
 			NewLeftPaddedWriter(output, leftPadding),
 			testRunSummary,
@@ -207,7 +229,7 @@ func (c *cmdShowTestSummary) showTestRunSummary(client *cloudapi.K6CloudClient, 
 
 	if c.checks {
 		fmt.Fprintln(output)
-		fmt.Fprint(output, fieldLines[currentField]+rightFieldPadding)
+		fmt.Fprint(output, fieldLines[currentField])
 		if err := showChecks(
 			NewLeftPaddedWriter(output, leftPadding),
 			testRunSummary,
@@ -221,7 +243,7 @@ func (c *cmdShowTestSummary) showTestRunSummary(client *cloudapi.K6CloudClient, 
 
 	if c.httpUrls {
 		fmt.Fprintln(output)
-		fmt.Fprint(output, fieldLines[currentField]+rightFieldPadding)
+		fmt.Fprint(output, fieldLines[currentField])
 		if err := showHttpUrls(
 			NewLeftPaddedWriter(output, leftPadding),
 			testRunSummary,

@@ -87,20 +87,23 @@ type Account struct {
 }
 
 type CloudTestRun struct {
-	Created          time.Time `json:"created"`
-	Duration         int64     `json:"duration"`
-	ErrorDetail      string    `json:"error_detail"`
-	ID               int64     `json:"id"`
-	LoadTime         any       `json:"load_time"`
-	Note             string    `json:"note"`
-	ProcessingStatus int       `json:"processing_status"`
-	ResultStatus     int       `json:"result_status"`
-	RunProcess       string    `json:"run_process"`
-	RunStatus        int       `json:"run_status"`
-	Started          time.Time `json:"started"`
-	TestID           int64     `json:"test_id"`
-	Vus              int       `json:"vus"`
-	Script           string    `json:"script"`
+	Created           time.Time       `json:"created"`
+	Distribution      [][]interface{} `json:"distribution"`
+	Duration          int64           `json:"duration"`
+	ErrorDetail       string          `json:"error_detail"`
+	ExecutionDuration float64         `json:"execution_duration"`
+	ID                int64           `json:"id"`
+	LoadTime          any             `json:"load_time"`
+	Note              string          `json:"note"`
+	ProcessingStatus  int             `json:"processing_status"`
+	ResultStatus      int             `json:"result_status"`
+	RunProcess        string          `json:"run_process"`
+	RunStatus         int             `json:"run_status"`
+	Started           time.Time       `json:"started"`
+	TestID            int64           `json:"test_id"`
+	Vus               int             `json:"vus"`
+	VuhCost           float64         `json:"vuh_cost"`
+	Script            string          `json:"script"`
 
 	RuntimeConfig struct {
 		TestRunDetails null.String `json:"testRunDetails"`
@@ -381,7 +384,12 @@ func (c *K6CloudClient) StartCloudTest(testID int64) (*CloudTestRun, error) {
 }
 
 func (c *K6CloudClient) GetCloudTestRun(referenceID string) (*CloudTestRun, error) {
-	url := fmt.Sprintf("%s/loadtests/v2/runs/%s?$select=id,duration,script,note", c.baseURL, referenceID)
+	url := fmt.Sprintf(
+		"%s/loadtests/v2/runs/%s?$select=id,duration,script,note,"+
+			"result_status,run_status,vuh_cost,distribution,execution_duration,k6_runtime_config",
+		c.baseURL,
+		referenceID,
+	)
 
 	req, err := c.NewRequest("GET", url, nil)
 	if err != nil {
