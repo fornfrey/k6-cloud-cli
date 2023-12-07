@@ -3,7 +3,9 @@ package cloudapi
 import (
 	"fmt"
 	"net/http"
+	"os"
 	"strconv"
+	"text/tabwriter"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -369,10 +371,15 @@ func (c *K6CloudClient) ListSchedule(orgId string) error {
 
 	// TODO: use common output functionality
 	fmt.Println("********** Schedules ***************")
-	fmt.Println("schedule_id", "test_id", "active", "next_run", "ends_type")
+	fmt.Println()
+
+	w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', tabwriter.AlignRight)
+
+	fmt.Fprintf(w, "schedule_id\ttest_id\tactive\tnext_run\tends_type\t\n")
 	for _, schedule := range schedules.K6Schedules {
-		fmt.Println(schedule.Id, schedule.TestId, schedule.Active, schedule.NextRun, schedule.Ends.Type)
+		fmt.Fprintf(w, "%d\t%d\t%t\t%s\t%s\t\n", schedule.Id, schedule.TestId, schedule.Active, schedule.NextRun, schedule.Ends.Type)
 	}
+	w.Flush()
 
 	return nil
 }
@@ -397,7 +404,12 @@ func (c *K6CloudClient) SetSchedule(testId int64, frequency string) error {
 		return err
 	}
 
-	return c.Do(req, nil)
+	if err = c.Do(req, nil); err != nil {
+		return err
+	}
+
+	fmt.Printf("Successfully created a schedule for test_id %d with a %s cadence", testId, frequency)
+	return nil
 }
 
 func (c *K6CloudClient) UpdateSchedule(scheduleId int64, frequency string, deactivate bool, activate bool) error {
@@ -405,6 +417,7 @@ func (c *K6CloudClient) UpdateSchedule(scheduleId int64, frequency string, deact
 
 	var req *http.Request
 	var err error
+	var successMsg string
 
 	if deactivate {
 		data := struct {
@@ -417,6 +430,7 @@ func (c *K6CloudClient) UpdateSchedule(scheduleId int64, frequency string, deact
 		if err != nil {
 			return err
 		}
+		successMsg = fmt.Sprintf("Successfully deactivated schedule %d", scheduleId)
 	} else if activate {
 		data := struct {
 			Active bool `json:"active"`
@@ -428,6 +442,7 @@ func (c *K6CloudClient) UpdateSchedule(scheduleId int64, frequency string, deact
 		if err != nil {
 			return err
 		}
+		successMsg = fmt.Sprintf("Successfully activated schedule %d", scheduleId)
 	} else {
 		data := struct {
 			Frequency string `json:"frequency"`
@@ -439,10 +454,16 @@ func (c *K6CloudClient) UpdateSchedule(scheduleId int64, frequency string, deact
 		if err != nil {
 			return err
 		}
+		successMsg = fmt.Sprintf("Successfully updated schedule %d with %s frequency", scheduleId, frequency)
 
 	}
 
-	return c.Do(req, nil)
+	if err = c.Do(req, nil); err != nil {
+		return err
+	}
+
+	fmt.Println(successMsg)
+	return nil
 }
 
 func (c *K6CloudClient) DeleteSchedule(scheduleId int64) error {
@@ -453,7 +474,13 @@ func (c *K6CloudClient) DeleteSchedule(scheduleId int64) error {
 		return err
 	}
 
-	return c.Do(req, nil)
+	if err = c.Do(req, nil); err != nil {
+		return err
+	}
+
+	fmt.Printf("Successfully deleted schedule %d", scheduleId)
+	return nil
+
 }
 
 func (c *K6CloudClient) GetCloudTestRunMetrics(referenceID string) ([]Metric, error) {
