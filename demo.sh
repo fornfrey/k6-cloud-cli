@@ -59,6 +59,8 @@ export default function () {
 ./k6 cloud testrun get 1
 ./k6 cloud testrun list 1
 
+./k6 cloud login -s
+
 ./k6 cloud validate correct-script.js
 
 # this needs to fail so we don't exit the script
