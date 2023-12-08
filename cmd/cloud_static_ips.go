@@ -7,7 +7,7 @@ import (
 
 func getCloudStaticIPCmd(client *cloudapi.K6CloudClient) *cobra.Command {
 	// k6 cloud staticip
-	staticIPSub := &cobra.Command{Use: "staticip"}
+	staticIPSub := &cobra.Command{Use: "staticip", Short: "Manage Static IPs"}
 	var ofJson bool
 	// k6 cloud staticip list
 	var orgId string

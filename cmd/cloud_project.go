@@ -7,11 +7,12 @@ import (
 
 func getCloudProjectCmd(client *cloudapi.K6CloudClient) *cobra.Command {
 	// k6 cloud project
-	projectSub := &cobra.Command{Use: "project"}
+	projectSub := &cobra.Command{Use: "project", Short: "Manage projects"}
 	// k6 cloud project list
 	var orgId string
 	listProjects := &cobra.Command{
-		Use: "list",
+		Use:   "list",
+		Short: "List projects",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			projects, err := client.ListCloudProjects(orgId)
 			if err != nil {

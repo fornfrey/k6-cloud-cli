@@ -252,13 +252,13 @@ type TestRunSummary struct {
 	} `json:"thresholds_summary"`
 }
 
-func (a *Account) DefaultOrganization() *Organization {
+func (a *Account) DefaultOrganization() (*Organization, error) {
 	for _, org := range a.Organizations {
 		if org.IsDefault {
-			return &org
+			return &org, nil
 		}
 	}
-	return nil
+	return nil, fmt.Errorf("Failed to find default organization")
 }
 
 // K6CloudClient handles communication with the k6 Cloud API.
@@ -297,7 +297,11 @@ func (c *K6CloudClient) GetAccount() (Account, error) {
 func (c *K6CloudClient) ListCloudProjects(organizationID string) ([]Projects, error) {
 	account, err := c.GetAccount()
 	if organizationID == "" {
-		organizationID = strconv.Itoa(account.DefaultOrganization().ID)
+		org, err := account.DefaultOrganization()
+		if err != nil {
+			return nil, err
+		}
+		organizationID = strconv.Itoa(org.ID)
 	}
 
 	url := fmt.Sprintf("%s/v3/organizations/%s/projects", c.baseURL, organizationID)
@@ -317,7 +321,11 @@ func (c *K6CloudClient) ListCloudProjects(organizationID string) ([]Projects, er
 func (c *K6CloudClient) ListCloudLoadZones(organizationID string) ([]LoadZone, error) {
 	account, err := c.GetAccount()
 	if organizationID == "" {
-		organizationID = strconv.Itoa(account.DefaultOrganization().ID)
+		org, err := account.DefaultOrganization()
+		if err != nil {
+			return nil, err
+		}
+		organizationID = strconv.Itoa(org.ID)
 	}
 	url := fmt.Sprintf("%s/v3/load-zones?organization_id=%s", c.baseURL, organizationID)
 
@@ -341,7 +349,12 @@ func (c *K6CloudClient) ListCloudTests(projectID string) ([]CloudTest, error) {
 		if err != nil {
 			return nil, err
 		}
-		organizationID := strconv.Itoa(account.DefaultOrganization().ID)
+		org, err := account.DefaultOrganization()
+		if err != nil {
+			return nil, err
+		}
+		organizationID := strconv.Itoa(org.ID)
+
 		projects, err := c.ListCloudProjects(organizationID)
 		if err != nil {
 			return nil, err
@@ -684,7 +697,11 @@ func (c *K6CloudClient) GetCloudTestRunHttpUrls(referenceID string) ([]HTTPUrl, 
 func (c *K6CloudClient) ListCloudStaticIPs(organizationID string) ([]StaticIP, error) {
 	account, err := c.GetAccount()
 	if organizationID == "" {
-		organizationID = strconv.Itoa(account.DefaultOrganization().ID)
+		org, err := account.DefaultOrganization()
+		if err != nil {
+			return nil, err
+		}
+		organizationID = strconv.Itoa(org.ID)
 	}
 
 	url := fmt.Sprintf("%s/v4/static-ips/%s", c.baseURL, organizationID)
