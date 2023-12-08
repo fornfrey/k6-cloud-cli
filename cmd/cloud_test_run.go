@@ -95,7 +95,124 @@ func getCloudTestRunCmd(gs *state.GlobalState, client *cloudapi.K6CloudClient) *
 		},
 	}
 
-	testrunsSub.AddCommand(listTestRun, getTestRun, downloadTestRun, getCloudCmdRunTest(gs), showTestSummary)
+	var ofJson bool
+	listThresholds := &cobra.Command{
+		Args:  cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs),
+		Use:   "thresholds [test-run-id]",
+		Short: "List test run thresholds",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			testRunID := args[0]
+			thresholds, err := client.GetCloudTestRunThresholds(testRunID)
+			if err != nil {
+				return err
+			}
+
+			slices.SortFunc(thresholds, func(a, b cloudapi.Threshold) int {
+				return strings.Compare(a.Name, b.Name)
+			})
+			out := NewCloudOutput("", []string{"name", "tainted", "stat", "calculated value"})
+			for _, threshold := range thresholds {
+				out.Add(map[string]any{
+					"name":             threshold.Name,
+					"stat":             threshold.Stat,
+					"tainted":          threshold.Tainted,
+					"calculated value": threshold.CalculatedValue,
+				})
+			}
+
+			if ofJson {
+				out.Json()
+			} else {
+				out.Print()
+			}
+			return nil
+		},
+	}
+	listThresholds.Flags().BoolVar(&ofJson, "json", false, "Output in JSON")
+
+	listHttpUrls := &cobra.Command{
+		Args:  cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs),
+		Use:   "httpurls [test-run-id]",
+		Short: "List test run HTTP URLs duration stats",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			testRunID := args[0]
+			urls, err := client.GetCloudTestRunHttpUrls(testRunID)
+			if err != nil {
+				return err
+			}
+			slices.SortFunc(urls, func(a, b cloudapi.HTTPUrl) int {
+				res := strings.Compare(a.Scenario, b.Scenario)
+				if res != 0 {
+					return res
+				}
+				res = strings.Compare(a.Name, b.Name)
+				if res != 0 {
+					return res
+				}
+				res = strings.Compare(a.Method, b.Method)
+				if res != 0 {
+					return res
+				}
+				switch {
+				case a.Status < b.Status:
+					return -1
+				case a.Status > b.Status:
+					return 1
+				default:
+					return 0
+				}
+			})
+
+			out := NewCloudOutput("", []string{
+				"scenario",
+				"method",
+				"name",
+				"status",
+				"expected response",
+				"count",
+				"min",
+				"avg",
+				"stdev",
+				"p(95)",
+				"p(99)",
+				"max",
+			})
+			for _, url := range urls {
+				out.Add(map[string]any{
+					"scenario":          url.Scenario,
+					"method":            url.Method,
+					"name":              url.Name,
+					"status":            url.Status,
+					"expected response": url.ExpectedResponse,
+					"count":             url.HTTPMetricSummary.RequestsCount,
+					"min":               url.HTTPMetricSummary.Duration.Min,
+					"avg":               url.HTTPMetricSummary.Duration.Mean,
+					"stdev":             url.HTTPMetricSummary.Duration.Stdev,
+					"p(95)":             url.HTTPMetricSummary.Duration.P95,
+					"p(99)":             url.HTTPMetricSummary.Duration.P99,
+					"max":               url.HTTPMetricSummary.Duration.Max,
+				})
+			}
+
+			if ofJson {
+				out.Json()
+			} else {
+				out.Print()
+			}
+			return nil
+		},
+	}
+	listHttpUrls.Flags().BoolVar(&ofJson, "json", false, "Output in JSON")
+
+	testrunsSub.AddCommand(
+		listTestRun,
+		getTestRun,
+		downloadTestRun,
+		getCloudCmdRunTest(gs),
+		showTestSummary,
+		listThresholds,
+		listHttpUrls,
+	)
 
 	return testrunsSub
 }
