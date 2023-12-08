@@ -11,7 +11,10 @@ import (
 )
 
 func getCloudMetricsCmd(client *cloudapi.K6CloudClient) *cobra.Command {
-	metricsSub := &cobra.Command{Use: "metrics"}
+	metricsSub := &cobra.Command{
+		Use:   "metrics",
+		Short: "Query test run metrics",
+	}
 
 	var testRunID string
 	var ofJson bool

@@ -374,8 +374,8 @@ func (c *K6CloudClient) ListCloudTestRuns(testID string) ([]CloudTestRun, error)
 	return testsRunList.CloudTestRun, err
 }
 
-func (c *K6CloudClient) StartCloudTest(testID int64) (*CloudTestRun, error) {
-	url := fmt.Sprintf("%s/loadtests/v2/tests/%d/start-testrun", c.baseURL, testID)
+func (c *K6CloudClient) StartCloudTest(testID string) (*CloudTestRun, error) {
+	url := fmt.Sprintf("%s/loadtests/v2/tests/%s/start-testrun", c.baseURL, testID)
 
 	req, err := c.NewRequest("POST", url, nil)
 	if err != nil {

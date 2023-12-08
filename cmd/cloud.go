@@ -41,7 +41,13 @@ func getCmdCloud(gs *state.GlobalState) *cobra.Command {
 		gs.Logger.Error(err)
 		os.Exit(1)
 	}
-	cmd := &cobra.Command{Use: "cloud"}
+	cmd := &cobra.Command{
+		Use:   "cloud",
+		Short: "Interact with k6 Cloud",
+		Long: `Interact with k6 Cloud
+
+See https://grafana.com/docs/grafana-cloud/k6/ for more info.`,
+	}
 
 	cmd.AddCommand(
 		getCloudProjectCmd(client),

@@ -77,7 +77,8 @@ func newRootCommand(gs *state.GlobalState) *rootCommand {
 		subCmd != nil &&
 		subCmd.Name() == "cloud" &&
 		!slices.Contains(gs.CmdArgs, "-h") &&
-		!slices.Contains(gs.CmdArgs, "--help") {
+		!slices.Contains(gs.CmdArgs, "--help") &&
+		slices.Index(gs.CmdArgs, "cloud") != len(gs.CmdArgs)-1 {
 
 		index := slices.Index(gs.CmdArgs, "cloud")
 		args := slices.Insert(gs.CmdArgs, index+1, "test", "run")[1:]
