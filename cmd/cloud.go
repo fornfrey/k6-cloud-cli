@@ -41,7 +41,13 @@ func getCmdCloud(gs *state.GlobalState) *cobra.Command {
 		gs.Logger.Error(err)
 		os.Exit(1)
 	}
-	cmd := &cobra.Command{Use: "cloud"}
+	cmd := &cobra.Command{
+		Use:   "cloud",
+		Short: "Interact with k6 Cloud",
+		Long: `Interact with k6 Cloud
+
+See https://grafana.com/docs/grafana-cloud/k6/ for more info.`,
+	}
 
 	cmd.AddCommand(
 		getCloudProjectCmd(client),
@@ -53,6 +59,7 @@ func getCmdCloud(gs *state.GlobalState) *cobra.Command {
 		getCloudScriptValidateCmd(gs),
 		getCloudLoginCmd(gs),
 		getCloudStaticIPCmd(client),
+		getCloudMetricsCmd(client),
 	)
 
 	return cmd
@@ -82,14 +89,6 @@ func (o *CloudOutput) Add(line map[string]any) {
 	o.content = append(o.content, line)
 }
 
-func (o *CloudOutput) PrintHeading() {
-	h := make([]interface{}, len(o.headings))
-	for i := range o.headings {
-		h[i] = o.headings[i]
-	}
-	fmt.Printf(o.format, h...)
-}
-
 func (o *CloudOutput) PrintHeadingTabled() {
 	headings := strings.Join(o.headings, "\t")
 	headings += "\t" // we need the last tab for it to be alligned
@@ -113,10 +112,19 @@ func (o *CloudOutput) PrintLineTabled(line map[string]any) {
 }
 
 func (o *CloudOutput) Print() {
-	o.PrintHeading()
-	for _, line := range o.content {
-		o.PrintLine(line)
+	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	for _, h := range o.headings {
+		fmt.Fprintf(w, "%s\t", strings.ToUpper(h))
 	}
+	fmt.Fprintln(w)
+
+	for _, line := range o.content {
+		for _, heading := range o.headings {
+			fmt.Fprintf(w, "%v\t", line[heading])
+		}
+		fmt.Fprintln(w)
+	}
+	w.Flush()
 }
 
 func (o *CloudOutput) PrintTabled() {
@@ -129,7 +137,17 @@ func (o *CloudOutput) PrintTabled() {
 }
 
 func (o *CloudOutput) Json() error {
-	bytes, err := json.Marshal(o.content)
+	jsonArray := make([]map[string]any, len(o.content))
+	for i, obj := range o.content {
+		jsonObj := make(map[string]any)
+		for k, v := range obj {
+			key := strings.ReplaceAll(strings.ToLower(k), " ", "_")
+			jsonObj[key] = v
+		}
+		jsonArray[i] = jsonObj
+	}
+
+	bytes, err := json.Marshal(jsonArray)
 	if err != nil {
 		return err
 	}

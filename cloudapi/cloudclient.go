@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -85,20 +86,23 @@ type Account struct {
 }
 
 type CloudTestRun struct {
-	Created          time.Time `json:"created"`
-	Duration         int64     `json:"duration"`
-	ErrorDetail      string    `json:"error_detail"`
-	ID               int64     `json:"id"`
-	LoadTime         any       `json:"load_time"`
-	Note             string    `json:"note"`
-	ProcessingStatus int       `json:"processing_status"`
-	ResultStatus     int       `json:"result_status"`
-	RunProcess       string    `json:"run_process"`
-	RunStatus        int       `json:"run_status"`
-	Started          time.Time `json:"started"`
-	TestID           int64     `json:"test_id"`
-	Vus              int       `json:"vus"`
-	Script           string    `json:"script"`
+	Created           time.Time       `json:"created"`
+	Distribution      [][]interface{} `json:"distribution"`
+	Duration          int64           `json:"duration"`
+	ErrorDetail       string          `json:"error_detail"`
+	ExecutionDuration float64         `json:"execution_duration"`
+	ID                int64           `json:"id"`
+	LoadTime          any             `json:"load_time"`
+	Note              string          `json:"note"`
+	ProcessingStatus  int             `json:"processing_status"`
+	ResultStatus      int             `json:"result_status"`
+	RunProcess        string          `json:"run_process"`
+	RunStatus         int             `json:"run_status"`
+	Started           time.Time       `json:"started"`
+	TestID            int64           `json:"test_id"`
+	Vus               int             `json:"vus"`
+	VuhCost           float64         `json:"vuh_cost"`
+	Script            string          `json:"script"`
 
 	RuntimeConfig struct {
 		TestRunDetails null.String `json:"testRunDetails"`
@@ -153,6 +157,14 @@ type Metric struct {
 	Type      string `json:"type"`
 }
 
+type MetricQueryResult struct {
+	ResultType string `json:"resultType"`
+	Result     []struct {
+		Metric map[string]string `json:"metric"`
+		Values [][]float64       `json:"values"`
+	} `json:"result"`
+}
+
 type Threshold struct {
 	CalculatedValue float64 `json:"calculated_value"`
 	ID              int     `json:"id"`
@@ -182,6 +194,62 @@ func (s *StaticIP) ProvisioningStatusString() string {
 		return val
 	}
 	return "Unknown"
+}
+
+type Check struct {
+	MetricSummary struct {
+		FailCount    int     `json:"fail_count"`
+		SuccessCount int     `json:"success_count"`
+		SuccessRate  float64 `json:"success_rate"`
+	} `json:"metric_summary"`
+	Name string `json:"name"`
+}
+
+type HTTPUrl struct {
+	ExpectedResponse  bool `json:"expected_response"`
+	HTTPMetricSummary struct {
+		Duration struct {
+			Max   float64 `json:"max"`
+			Mean  float64 `json:"mean"`
+			Min   float64 `json:"min"`
+			P95   float64 `json:"p95"`
+			P99   float64 `json:"p99"`
+			Stdev float64 `json:"stdev"`
+		} `json:"duration"`
+		RequestsCount int `json:"requests_count"`
+	} `json:"http_metric_summary"`
+	Method   string `json:"method"`
+	Name     string `json:"name"`
+	Scenario string `json:"scenario"`
+	Status   int    `json:"status"`
+}
+
+type TestRunSummary struct {
+	ChecksMetricSummary struct {
+		HitsSuccesses null.Int `json:"hits_successes"`
+		HitsTotal     null.Int `json:"hits_total"`
+		Successes     int      `json:"successes"`
+		Total         int      `json:"total"`
+	} `json:"checks_metric_summary"`
+	HTTPMetricSummary struct {
+		Duration struct {
+			Count int     `json:"count"`
+			Max   float64 `json:"max"`
+			Mean  float64 `json:"mean"`
+			Min   float64 `json:"min"`
+			P95   float64 `json:"p95"`
+			P99   float64 `json:"p99"`
+			Stdev float64 `json:"stdev"`
+		} `json:"duration"`
+		FailuresCount int     `json:"failures_count"`
+		RequestsCount int     `json:"requests_count"`
+		RpsMax        float64 `json:"rps_max"`
+		RpsMean       float64 `json:"rps_mean"`
+	} `json:"http_metric_summary"`
+	ThresholdsSummary struct {
+		Successes int `json:"successes"`
+		Total     int `json:"total"`
+	} `json:"thresholds_summary"`
 }
 
 func (a *Account) DefaultOrganization() *Organization {
@@ -304,8 +372,8 @@ func (c *K6CloudClient) ListCloudTestRuns(testID string) ([]CloudTestRun, error)
 	return testsRunList.CloudTestRun, err
 }
 
-func (c *K6CloudClient) StartCloudTest(testID int64) (*CloudTestRun, error) {
-	url := fmt.Sprintf("%s/loadtests/v2/tests/%d/start-testrun", c.baseURL, testID)
+func (c *K6CloudClient) StartCloudTest(testID string) (*CloudTestRun, error) {
+	url := fmt.Sprintf("%s/loadtests/v2/tests/%s/start-testrun", c.baseURL, testID)
 
 	req, err := c.NewRequest("POST", url, nil)
 	if err != nil {
@@ -323,7 +391,12 @@ func (c *K6CloudClient) StartCloudTest(testID int64) (*CloudTestRun, error) {
 }
 
 func (c *K6CloudClient) GetCloudTestRun(referenceID string) (*CloudTestRun, error) {
-	url := fmt.Sprintf("%s/loadtests/v2/runs/%s?$select=id,duration,script,note", c.baseURL, referenceID)
+	url := fmt.Sprintf(
+		"%s/loadtests/v2/runs/%s?$select=id,duration,script,note,"+
+			"result_status,run_status,vuh_cost,distribution,execution_duration,k6_runtime_config",
+		c.baseURL,
+		referenceID,
+	)
 
 	req, err := c.NewRequest("GET", url, nil)
 	if err != nil {
@@ -492,6 +565,22 @@ func (c *K6CloudClient) DeleteSchedule(scheduleId int64) error {
 
 }
 
+func (c *K6CloudClient) GetCloudTestRunSummary(referenceID string) (*TestRunSummary, error) {
+	url := fmt.Sprintf("%s/loadtests/v4/test_runs(%s)?$select=http_metric_summary,thresholds_summary,checks_metric_summary", c.baseURL, referenceID)
+
+	req, err := c.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+	response := &TestRunSummary{}
+
+	err = c.Do(req, response)
+	if err != nil {
+		return nil, err
+	}
+	return response, nil
+}
+
 func (c *K6CloudClient) GetCloudTestRunMetrics(referenceID string) ([]Metric, error) {
 	url := fmt.Sprintf("%s/cloud/v5/test_runs/%s/metrics", c.baseURL, referenceID)
 
@@ -510,29 +599,32 @@ func (c *K6CloudClient) GetCloudTestRunMetrics(referenceID string) ([]Metric, er
 	return response.Value, nil
 }
 
-func (c *K6CloudClient) GetCloudTestRunMetricsAggregate(referenceID, query, metric string) (float64, error) {
-	url := fmt.Sprintf("%s/cloud/v5/test_runs/%s/query_aggregate_k6(query='%s',metric='%s')", c.baseURL, referenceID, query, metric)
+func (c *K6CloudClient) GetCloudTestRunMetricsAggregate(
+	referenceID, query, metric, start, end string,
+) (*MetricQueryResult, error) {
+	params := fmt.Sprintf("query='%s',metric='%s'", query, metric)
+	if start != "" {
+		params += fmt.Sprintf(",start=%s", start)
+	}
+	if end != "" {
+		params += fmt.Sprintf(",end=%s", end)
+	}
+	url := fmt.Sprintf("%s/cloud/v5/test_runs/%s/query_aggregate_k6(%s)", c.baseURL, referenceID, params)
+	url = strings.ReplaceAll(url, " ", "%20")
 
 	req, err := c.NewRequest("GET", url, nil)
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
 	response := struct {
-		Data struct {
-			Result []struct {
-				Values [][]float64 `json:"values"`
-			} `json:"result"`
-		} `json:"data"`
+		Data MetricQueryResult `json:"data"`
 	}{}
 
 	err = c.Do(req, &response)
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
-	if len(response.Data.Result) != 1 || len(response.Data.Result[0].Values) != 1 || len(response.Data.Result[0].Values[0]) != 2 {
-		return 0, fmt.Errorf("Received ivalid response when fetching %s %s value", metric, query)
-	}
-	return response.Data.Result[0].Values[0][1], nil
+	return &response.Data, nil
 }
 
 func (c *K6CloudClient) GetCloudTestRunThresholds(referenceID string) ([]Threshold, error) {
@@ -553,15 +645,33 @@ func (c *K6CloudClient) GetCloudTestRunThresholds(referenceID string) ([]Thresho
 	return response.Value, nil
 }
 
-func (c *K6CloudClient) GetCloudTestRunHttpUrls(referenceID string) ([]Threshold, error) {
-	url := fmt.Sprintf("%s/loadtests/v4/test_runs(%s)/thresholds?$select=id,name,stat,tainted,calculated_value", c.baseURL, referenceID)
+func (c *K6CloudClient) GetCloudTestRunChecks(referenceID string) ([]Check, error) {
+	url := fmt.Sprintf("%s/loadtests/v4/test_runs(%s)/checks?$select=name,metric_summary&$filter=group_id%%20eq%%20null", c.baseURL, referenceID)
 
 	req, err := c.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, err
 	}
 	response := struct {
-		Value []Threshold `json:"value"`
+		Value []Check `json:"value"`
+	}{}
+
+	err = c.Do(req, &response)
+	if err != nil {
+		return nil, err
+	}
+	return response.Value, nil
+}
+
+func (c *K6CloudClient) GetCloudTestRunHttpUrls(referenceID string) ([]HTTPUrl, error) {
+	url := fmt.Sprintf("%s/loadtests/v4/test_runs(%s)/http_urls?$select=id,scenario_id,group_id,name,method,status,scenario,expected_response,http_metric_summary&$filter=group_id%%20eq%%20null", c.baseURL, referenceID)
+
+	req, err := c.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+	response := struct {
+		Value []HTTPUrl `json:"value"`
 	}{}
 
 	err = c.Do(req, &response)

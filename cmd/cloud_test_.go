@@ -28,15 +28,11 @@ import (
 
 // NOTE: This file ends with an underscore so it isn't a test file.
 
-const (
-	testIDNotSet = -1
-)
-
 // cmdCloudRunTest handles the `k6 cloud` sub-command
 type cmdCloudRunTest struct {
 	gs *state.GlobalState
 
-	testID        int64
+	testID        string
 	showCloudLogs bool
 	exitOnRunning bool
 	uploadOnly    bool
@@ -506,7 +502,7 @@ func (c *cmdCloudRunTest) RunById(cmd *cobra.Command, args []string) error {
 }
 
 func (c *cmdCloudRunTest) run(cmd *cobra.Command, args []string) error {
-	if c.testID == testIDNotSet {
+	if c.testID == "" {
 		return c.runWithScript(cmd, args)
 	} else {
 		return c.RunById(cmd, args)
@@ -526,14 +522,14 @@ func (c *cmdCloudRunTest) flagSet() *pflag.FlagSet {
 		"enable showing of logs when a test is executed in the cloud")
 	flags.BoolVar(&c.uploadOnly, "upload-only", c.uploadOnly,
 		"only upload the test to the cloud without actually starting a test run")
-	flags.Int64Var(&c.testID, "test-id", testIDNotSet, "start existing test using provided id")
+	flags.StringVar(&c.testID, "test-id", "", "start existing test using provided id")
 	return flags
 }
 
 func getCloudCmdRunTest(gs *state.GlobalState) *cobra.Command {
 	c := &cmdCloudRunTest{
 		gs:            gs,
-		testID:        testIDNotSet,
+		testID:        "",
 		showCloudLogs: true,
 		exitOnRunning: false,
 		uploadOnly:    false,
@@ -544,17 +540,17 @@ func getCloudCmdRunTest(gs *state.GlobalState) *cobra.Command {
 
 	cloudCmd := &cobra.Command{
 		Use:   "run",
-		Short: "Run a test on the cloud",
-		Long: `Run a test on the cloud.
+		Short: "Run a test in the Cloud",
+		Long: `Run a test in the Cloud.
 
-This will execute the test on the k6 cloud service. Use "k6 login cloud" to authenticate.`,
+This will execute the test in the k6 Cloud service. Use "k6 cloud login" to authenticate.`,
 		Example: exampleText,
 		Args: func(cmd *cobra.Command, args []string) error {
-			testID, err := cmd.Flags().GetInt64("test-id")
+			testID, err := cmd.Flags().GetString("test-id")
 			if err != nil {
 				return err
 			}
-			if testID == testIDNotSet && len(args) != 1 {
+			if testID == "" && len(args) != 1 {
 				return fmt.Errorf("accepts %d arg(s), received %d: %s", 1, len(args), "arg should either be \"-\", if reading script from stdin, or a path to a script file")
 			}
 			return nil
@@ -635,15 +631,12 @@ func getCloudTestCmd(gs *state.GlobalState, client *cloudapi.K6CloudClient) *cob
 		Args: cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs),
 		Use:  "edit [test-id]",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			testID, err := strconv.ParseInt(args[0], 10, 64)
+			testID := args[0]
+			test, err := client.GetCloudTest(testID)
 			if err != nil {
 				return err
 			}
-			test, err := client.GetCloudTest(args[0])
-			if err != nil {
-				return err
-			}
-			f, err := os.CreateTemp("", fmt.Sprintf("k6-test-%s-*", args[0]))
+			f, err := os.CreateTemp("", fmt.Sprintf("k6-test-%s-*", testID))
 			defer os.Remove(f.Name())
 			if err != nil {
 				return err
@@ -673,7 +666,7 @@ func getCloudTestCmd(gs *state.GlobalState, client *cloudapi.K6CloudClient) *cob
 				return err
 			}
 
-			test, err = client.PatchCloudTest(args[0], map[string]string{
+			test, err = client.PatchCloudTest(testID, map[string]string{
 				"script": string(newScript),
 			})
 			if err != nil {
@@ -683,7 +676,7 @@ func getCloudTestCmd(gs *state.GlobalState, client *cloudapi.K6CloudClient) *cob
 			if run {
 				crt := &cmdCloudRunTest{
 					gs:     gs,
-					testID: int64(testID),
+					testID: testID,
 				}
 				err = crt.RunById(cmd, args)
 			} else {

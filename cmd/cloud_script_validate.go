@@ -13,7 +13,7 @@ func getCloudScriptValidateCmd(gs *state.GlobalState) *cobra.Command {
 
 	c := &cmdCloudRunTest{
 		gs:            gs,
-		testID:        testIDNotSet,
+		testID:        "",
 		showCloudLogs: true,
 		exitOnRunning: false,
 		uploadOnly:    false,
