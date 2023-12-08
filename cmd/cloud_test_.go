@@ -573,7 +573,8 @@ func getCloudTestCmd(gs *state.GlobalState, client *cloudapi.K6CloudClient) *cob
 	var projId string
 	// k6 cloud test list\
 	listTests := &cobra.Command{
-		Use: "list",
+		Use:   "list",
+		Short: "List a projects load tests",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			tests, err := client.ListCloudTests(projId)
 			if err != nil {
@@ -593,8 +594,9 @@ func getCloudTestCmd(gs *state.GlobalState, client *cloudapi.K6CloudClient) *cob
 	listTests.Flags().StringVar(&projId, "proj-id", "", "Project id")
 
 	getTest := &cobra.Command{
-		Args: cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs),
-		Use:  "get [test-id]",
+		Args:  cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs),
+		Short: "Get individual load test",
+		Use:   "get [test-id]",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			test, err := client.GetCloudTest(args[0])
 			if err != nil {
@@ -614,8 +616,9 @@ func getCloudTestCmd(gs *state.GlobalState, client *cloudapi.K6CloudClient) *cob
 	}
 
 	downloadTest := &cobra.Command{
-		Args: cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs),
-		Use:  "download [test-id]",
+		Args:  cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs),
+		Short: "Download the load test script",
+		Use:   "download [test-id]",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			test, err := client.GetCloudTest(args[0])
 			if err != nil {
@@ -628,8 +631,9 @@ func getCloudTestCmd(gs *state.GlobalState, client *cloudapi.K6CloudClient) *cob
 
 	var run bool
 	editTest := &cobra.Command{
-		Args: cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs),
-		Use:  "edit [test-id]",
+		Args:  cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs),
+		Short: "Edit test scripts in your default editor",
+		Use:   "edit [test-id] --run",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			testID := args[0]
 			test, err := client.GetCloudTest(testID)
