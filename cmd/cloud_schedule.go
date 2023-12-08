@@ -30,12 +30,19 @@ func getCloudScheduleCmd(gs *state.GlobalState, client *cloudapi.K6CloudClient) 
   # Delete a schedule.
   {{.}} cloud schedule delete SCHEDULE_ID`[1:])
 
-	scheduleSub := &cobra.Command{Use: "schedule", Example: exampleText}
+	scheduleSub := &cobra.Command{
+		Use:     "schedule",
+		Example: exampleText,
+		Short:   "Configure test schedules",
+		Long:    "Configure test schedules",
+	}
 	scheduleSub.PersistentFlags().StringVar(&orgId, "org-id", "", "Organization id")
 
 	// k6 cloud schedule list
 	listSchedule := &cobra.Command{
-		Use: "list",
+		Use:   "list",
+		Short: "List all test schedules for an organization",
+		Long:  "List all test schedules for an organization",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			schedules, err := client.ListSchedule(orgId, jsonOutput)
 			if err != nil {
@@ -65,8 +72,10 @@ func getCloudScheduleCmd(gs *state.GlobalState, client *cloudapi.K6CloudClient) 
 
 	// k6 cloud schedule set
 	setSchedule := &cobra.Command{
-		Use:  "set",
-		Args: cobra.MinimumNArgs(2),
+		Use:   "set",
+		Short: "Create a new schedule",
+		Long:  "Create a new schedule",
+		Args:  cobra.MinimumNArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			testId, err := strconv.ParseInt(args[0], 10, 64)
 			if err != nil {
@@ -94,8 +103,10 @@ func getCloudScheduleCmd(gs *state.GlobalState, client *cloudapi.K6CloudClient) 
 	var deactivate bool
 	var activate bool
 	updateSchedule := &cobra.Command{
-		Use:  "update",
-		Args: cobra.MinimumNArgs(1),
+		Use:   "update",
+		Short: "Update a schedule",
+		Long:  "Update a schedule",
+		Args:  cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			scheduleId, err := strconv.ParseInt(args[0], 10, 64)
 			if err != nil {
@@ -132,8 +143,10 @@ func getCloudScheduleCmd(gs *state.GlobalState, client *cloudapi.K6CloudClient) 
 
 	// k6 cloud schedule delete
 	deleteSchedule := &cobra.Command{
-		Use:  "delete",
-		Args: cobra.MinimumNArgs(1),
+		Use:   "delete",
+		Short: "Delete a schedule",
+		Long:  "Delete a schedule",
+		Args:  cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			scheduleId, err := strconv.ParseInt(args[0], 10, 64)
 			if err != nil {
