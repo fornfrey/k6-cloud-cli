@@ -49,7 +49,7 @@ func getCmdCloud(gs *state.GlobalState) *cobra.Command {
 		getCloudOrganizationCmd(client),
 		getCloudTestCmd(gs, client),
 		getCloudTestRunCmd(gs, client),
-		getCloudScheduleCmd(client),
+		getCloudScheduleCmd(gs, client),
 		getCloudScriptValidateCmd(gs),
 		getCloudLoginCmd(gs),
 		getCloudStaticIPCmd(client),
