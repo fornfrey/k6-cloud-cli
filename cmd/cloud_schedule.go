@@ -25,7 +25,7 @@ func getCloudScheduleCmd(client *cloudapi.K6CloudClient) *cobra.Command {
 				return err
 			}
 
-			out := NewCloudOutput("%d\t%d\t%t\t%s\t%s\t\n", []string{"schedule_id", "test_id", "active", "next_run", "ends_type"})
+			out := NewTabbedCloudOutput([]string{"%d", "%d", "%t", "%s", "%s"}, []string{"schedule_id", "test_id", "active", "next_run", "ends_type"})
 			if jsonOutput {
 				defer out.Json()
 			} else {

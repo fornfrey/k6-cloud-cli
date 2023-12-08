@@ -68,6 +68,12 @@ type CloudOutput struct {
 }
 
 func NewCloudOutput(format string, headings []string) *CloudOutput {
+	return &CloudOutput{format: format, headings: headings}
+}
+
+func NewTabbedCloudOutput(formatStrings []string, headings []string) *CloudOutput {
+	format := strings.Join(formatStrings, "\t")
+	format += "\t\n"
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', tabwriter.AlignRight)
 	return &CloudOutput{format: format, headings: headings, tabWriter: w}
 }
