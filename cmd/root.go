@@ -73,7 +73,12 @@ func newRootCommand(gs *state.GlobalState) *rootCommand {
 
 	// hack to keep backwards compatibility with "k6 cloud" command to run a test from script
 	subCmd, _, err := rootCmd.Find(gs.CmdArgs[1:])
-	if err == nil && subCmd != nil && subCmd.Name() == "cloud" {
+	if err == nil &&
+		subCmd != nil &&
+		subCmd.Name() == "cloud" &&
+		!slices.Contains(gs.CmdArgs, "-h") &&
+		!slices.Contains(gs.CmdArgs, "--help") {
+
 		index := slices.Index(gs.CmdArgs, "cloud")
 		args := slices.Insert(gs.CmdArgs, index+1, "test", "run")[1:]
 		rootCmd.SetArgs(args)
