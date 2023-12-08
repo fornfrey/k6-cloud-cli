@@ -7,13 +7,30 @@ import (
 
 	"github.com/spf13/cobra"
 	"go.k6.io/k6/cloudapi"
+	"go.k6.io/k6/cmd/state"
 )
 
-func getCloudScheduleCmd(client *cloudapi.K6CloudClient) *cobra.Command {
+func getCloudScheduleCmd(gs *state.GlobalState, client *cloudapi.K6CloudClient) *cobra.Command {
 	// k6 cloud schedule
 	var orgId string
 	var jsonOutput bool
-	scheduleSub := &cobra.Command{Use: "schedule"}
+
+	exampleText := getExampleText(gs, `
+  # List all schedules for an organization.
+  {{.}} cloud schedule list --org-id ID
+
+  # Create a schedule for a test.
+  {{.}} cloud schedule set TEST_ID FREQUENCY
+
+  # Update a schedule.
+  {{.}} cloud schedule update SCHEDULE_ID FREQUENCY
+  {{.}} cloud schedule update SCHEDULE_ID --deactivate
+  {{.}} cloud schedule update SCHEDULE_ID --activate
+
+  # Delete a schedule.
+  {{.}} cloud schedule delete SCHEDULE_ID`[1:])
+
+	scheduleSub := &cobra.Command{Use: "schedule", Example: exampleText}
 	scheduleSub.PersistentFlags().StringVar(&orgId, "org-id", "", "Organization id")
 
 	// k6 cloud schedule list
