@@ -87,8 +87,9 @@ func getCloudTestRunCmd(gs *state.GlobalState, client *cloudapi.K6CloudClient) *
 	}
 
 	showTestSummary := &cobra.Command{
-		Args: cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs),
-		Use:  "summary [test-run-id]",
+		Args:  cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs),
+		Use:   "summary [test-run-id]",
+		Short: "Show test run execution summary",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return showTestRunSummary(args[0], client, gs)
 		},
@@ -457,11 +458,13 @@ func fetchMetricAggregateValues(testRunID string, summary *metricSummary, client
 		aggregate := summary.Aggregates[i]
 		result := make(chan error)
 		go func() {
-			value, err := client.GetCloudTestRunMetricsAggregate(testRunID, aggregate.Query, summary.Metric.Name)
+			queryResult, err := client.GetCloudTestRunMetricsAggregate(
+				testRunID, aggregate.Query, summary.Metric.Name, "", "",
+			)
 			if err != nil {
 				result <- err
 			} else {
-				aggregate.Value = value
+				aggregate.Value = queryResult.Result[0].Values[0][1]
 				if aggregate.Query == "ratio" {
 					aggregate.Value *= 100
 				}
@@ -505,7 +508,7 @@ func showThresholds(
 	for i, threshold := range thresholds {
 		separatorIdx := strings.LastIndex(threshold.Name, ":")
 		name := threshold.Name[:separatorIdx]
-		condition := strings.Replace(threshold.Name[separatorIdx+1:], " ", "", -1)
+		condition := strings.ReplaceAll(threshold.Name[separatorIdx+1:], " ", "")
 		status := successColor.Sprint("✓")
 		if threshold.Tainted {
 			status = failureColor.Sprint("✗")

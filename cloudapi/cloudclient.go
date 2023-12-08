@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 	"text/tabwriter"
 	"time"
 
@@ -156,6 +157,14 @@ type Metric struct {
 	Origin    string `json:"origin"`
 	TestRunID int    `json:"test_run_id"`
 	Type      string `json:"type"`
+}
+
+type MetricQueryResult struct {
+	ResultType string `json:"resultType"`
+	Result     []struct {
+		Metric map[string]string `json:"metric"`
+		Values [][]float64       `json:"values"`
+	} `json:"result"`
 }
 
 type Threshold struct {
@@ -604,29 +613,32 @@ func (c *K6CloudClient) GetCloudTestRunMetrics(referenceID string) ([]Metric, er
 	return response.Value, nil
 }
 
-func (c *K6CloudClient) GetCloudTestRunMetricsAggregate(referenceID, query, metric string) (float64, error) {
-	url := fmt.Sprintf("%s/cloud/v5/test_runs/%s/query_aggregate_k6(query='%s',metric='%s')", c.baseURL, referenceID, query, metric)
+func (c *K6CloudClient) GetCloudTestRunMetricsAggregate(
+	referenceID, query, metric, start, end string,
+) (*MetricQueryResult, error) {
+	params := fmt.Sprintf("query='%s',metric='%s'", query, metric)
+	if start != "" {
+		params += fmt.Sprintf(",start=%s", start)
+	}
+	if end != "" {
+		params += fmt.Sprintf(",end=%s", end)
+	}
+	url := fmt.Sprintf("%s/cloud/v5/test_runs/%s/query_aggregate_k6(%s)", c.baseURL, referenceID, params)
+	url = strings.ReplaceAll(url, " ", "%20")
 
 	req, err := c.NewRequest("GET", url, nil)
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
 	response := struct {
-		Data struct {
-			Result []struct {
-				Values [][]float64 `json:"values"`
-			} `json:"result"`
-		} `json:"data"`
+		Data MetricQueryResult `json:"data"`
 	}{}
 
 	err = c.Do(req, &response)
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
-	if len(response.Data.Result) != 1 || len(response.Data.Result[0].Values) != 1 || len(response.Data.Result[0].Values[0]) != 2 {
-		return 0, fmt.Errorf("Received ivalid response when fetching %s %s value", metric, query)
-	}
-	return response.Data.Result[0].Values[0][1], nil
+	return &response.Data, nil
 }
 
 func (c *K6CloudClient) GetCloudTestRunThresholds(referenceID string) ([]Threshold, error) {

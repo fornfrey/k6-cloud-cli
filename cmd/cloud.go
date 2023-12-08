@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"text/tabwriter"
 
 	"github.com/spf13/cobra"
 
@@ -52,6 +53,7 @@ func getCmdCloud(gs *state.GlobalState) *cobra.Command {
 		getCloudScriptValidateCmd(gs),
 		getCloudLoginCmd(gs),
 		getCloudStaticIPCmd(client),
+		getCloudMetricsCmd(client),
 	)
 
 	return cmd
@@ -73,31 +75,34 @@ func (o *CloudOutput) Add(line map[string]any) {
 	o.content = append(o.content, line)
 }
 
-func (o *CloudOutput) PrintHeading() {
-	h := make([]interface{}, len(o.headings))
-	for i := range o.headings {
-		h[i] = o.headings[i]
-	}
-	fmt.Printf(o.format, h...)
-}
-
-func (o *CloudOutput) PrintLine(line map[string]any) {
-	var l []any
-	for _, heading := range o.headings {
-		l = append(l, line[heading])
-	}
-	fmt.Printf(o.format, l...)
-}
-
 func (o *CloudOutput) Print() {
-	o.PrintHeading()
-	for _, line := range o.content {
-		o.PrintLine(line)
+	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	for _, h := range o.headings {
+		fmt.Fprintf(w, "%s\t", strings.ToUpper(h))
 	}
+	fmt.Fprintln(w)
+
+	for _, line := range o.content {
+		for _, heading := range o.headings {
+			fmt.Fprintf(w, "%v\t", line[heading])
+		}
+		fmt.Fprintln(w)
+	}
+	w.Flush()
 }
 
 func (o *CloudOutput) Json() error {
-	bytes, err := json.Marshal(o.content)
+	jsonArray := make([]map[string]any, len(o.content))
+	for i, obj := range o.content {
+		jsonObj := make(map[string]any)
+		for k, v := range obj {
+			key := strings.ReplaceAll(strings.ToLower(k), " ", "_")
+			jsonObj[key] = v
+		}
+		jsonArray[i] = jsonObj
+	}
+
+	bytes, err := json.Marshal(jsonArray)
 	if err != nil {
 		return err
 	}
