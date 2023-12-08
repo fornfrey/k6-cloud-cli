@@ -27,8 +27,8 @@ func getCloudScriptValidateCmd(gs *state.GlobalState) *cobra.Command {
 	validateSub := &cobra.Command{
 		Use:     "validate",
 		Example: exampleText,
-		Short:   "Validate a k6 script taking your subscriptions into consideration",
-		Long:    "Validate a k6 script taking your subscriptions into consideration",
+		Short:   "Validate k6 script against your current subscription",
+		Long:    "Validate k6 script against your current subscription",
 		Args:    cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			logger := c.gs.Logger
