@@ -1,6 +1,7 @@
 package cloudapi
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -477,6 +478,27 @@ func (c *K6CloudClient) ListSchedule(orgId string, jsonOutput bool) ([]Schedule,
 	}
 
 	return schedules.K6Schedules, err
+}
+
+func (c *K6CloudClient) GetScheduleFromTestId(testId int64) (*Schedule, error) {
+	url := fmt.Sprintf("%s/v4/schedules?test_id=%d", c.baseURL, testId)
+
+	req, err := c.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	schedules := ListSchedulesResponse{}
+	if err := c.Do(req, &schedules); err != nil {
+		return nil, err
+	}
+
+	if len(schedules.K6Schedules) == 0 {
+		errorMsg := fmt.Sprintf("No schedule found for test_id %d", testId)
+		return nil, errors.New(errorMsg)
+	}
+
+	return &schedules.K6Schedules[0], nil
 }
 
 func (c *K6CloudClient) SetSchedule(testId int64, frequency string) error {

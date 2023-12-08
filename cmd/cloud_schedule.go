@@ -28,7 +28,8 @@ func getCloudScheduleCmd(gs *state.GlobalState, client *cloudapi.K6CloudClient) 
   {{.}} cloud schedule update SCHEDULE_ID --activate
 
   # Delete a schedule.
-  {{.}} cloud schedule delete SCHEDULE_ID`[1:])
+  {{.}} cloud schedule delete SCHEDULE_ID
+  {{.}} cloud schedule delete --test-id TEST_ID`[1:])
 
 	scheduleSub := &cobra.Command{
 		Use:     "schedule",
@@ -142,19 +143,41 @@ func getCloudScheduleCmd(gs *state.GlobalState, client *cloudapi.K6CloudClient) 
 	updateSchedule.Flags().BoolVar(&activate, "activate", false, "Activate the schedule")
 
 	// k6 cloud schedule delete
+	var testId int64
 	deleteSchedule := &cobra.Command{
 		Use:   "delete",
 		Short: "Delete a schedule",
 		Long:  "Delete a schedule",
-		Args:  cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			scheduleId, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil {
-				return err
+
+			var scheduleId int64
+			var err error
+
+			if testId != 0 {
+				if len(args) > 0 {
+					return errors.New("Please do not pass a schedule_id argument when using the --test-id flag")
+				}
+				schedule, err := client.GetScheduleFromTestId(testId)
+				if err != nil {
+					return err
+				}
+				scheduleId = schedule.Id
+			} else {
+				if len(args) != 1 {
+					return errors.New("Usage: k6 cloud schedule delete SCHEDULE_ID")
+				}
+
+				scheduleId, err = strconv.ParseInt(args[0], 10, 64)
+				if err != nil {
+					return err
+				}
+
 			}
 
 			return client.DeleteSchedule(scheduleId)
 		}}
+
+	deleteSchedule.Flags().Int64Var(&testId, "test-id", 0, "Select by test-id")
 
 	scheduleSub.AddCommand(listSchedule)
 	scheduleSub.AddCommand(setSchedule)
